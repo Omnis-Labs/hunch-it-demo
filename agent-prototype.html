@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hunch It — 交易判斷 Agent</title>
+<style>
+  :root{
+    --bg:#07090e;
+    --app:#0c0f16;
+    --surface:#131722;
+    --surface-2:#1a1f2c;
+    --surface-3:#222836;
+    --line:#252b3a;
+    --line-soft:#1e2431;
+    --ink:#eef1f7;
+    --ink-2:#9aa3b6;
+    --ink-3:#616c82;
+    --accent:#5b8def;
+    --accent-2:#7c5cff;
+    --accent-soft:#1a2540;
+    --fact:#37c98b;
+    --interp:#5b8def;
+    --predict:#e6a93a;
+    --emotion:#f0678f;
+    --warn:#e6a93a;
+    --ok:#37c98b;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 700px at 20% -10%, #16213e 0%, transparent 55%),
+               radial-gradient(1000px 700px at 100% 110%, #201a3a 0%, transparent 50%),
+               var(--bg);
+    font-family:var(--font);color:var(--ink);display:grid;place-items:center;min-height:100%;
+    -webkit-font-smoothing:antialiased;padding:22px;
+  }
+  .desk-note{position:fixed;left:26px;top:24px;max-width:230px;color:#7c8199;display:none}
+  @media(min-width:920px){
+    .desk-note{display:block;color:#7c8199;font-size:13px;line-height:1.7}
+    .desk-note b{color:#cfd6e6;font-size:15px;display:block;margin-bottom:8px}
+    .desk-note .b3{margin-top:14px;padding-top:14px;border-top:1px solid #1e2431}
+    .desk-note .b3 span{display:block;margin:6px 0;padding-left:14px;position:relative}
+    .desk-note .b3 span::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;background:#5b8def}
+  }
+
+  /* ---------- phone ---------- */
+  .phone{
+    width:392px;height:830px;background:var(--app);border-radius:46px;position:relative;overflow:hidden;
+    box-shadow:0 0 0 11px #05060a, 0 0 0 13px #20242e, 0 40px 90px rgba(0,0,0,.6);
+  }
+  @media(max-width:460px){
+    body{padding:0}
+    .phone{width:100vw;height:100dvh;border-radius:0;box-shadow:none}
+  }
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:30px;background:#05060a;
+    border-radius:0 0 18px 18px;z-index:60}
+  .statusbar{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;
+    padding:14px 26px 0;font-size:14px;font-weight:600;z-index:55;pointer-events:none}
+  .statusbar .icons{display:flex;gap:6px;align-items:center}
+  .statusbar svg{width:17px;height:12px;fill:var(--ink)}
+
+  .viewport{position:absolute;inset:0;overflow:hidden}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;transform:translateX(100%);
+    opacity:0;pointer-events:none;transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .3s}
+  .screen.active{transform:none;opacity:1;pointer-events:auto}
+  .screen.back{transform:translateX(-24%)}
+
+  .appbar{padding:56px 22px 12px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
+  .appbar .title{font-size:22px;font-weight:800;letter-spacing:.01em}
+  .appbar .sub{font-size:13px;color:var(--ink-3);font-weight:500}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3a4a6b,#5b4d8a);display:grid;place-items:center;
+    font-size:15px;font-weight:700;color:#fff}
+  .logo-badge{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:17px;box-shadow:0 6px 16px rgba(91,141,239,.4)}
+
+  .body{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 18px 108px;scrollbar-width:none}
+  .body::-webkit-scrollbar{display:none}
+
+  /* ---------- bottom nav ---------- */
+  .tabbar{position:absolute;left:0;right:0;bottom:0;height:86px;background:color-mix(in srgb,var(--app) 82%,transparent);
+    backdrop-filter:blur(18px);border-top:1px solid var(--line-soft);display:flex;padding:10px 8px 22px;z-index:50}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink-3);font-size:10.5px;font-weight:600;
+    background:none;border:none;cursor:pointer;transition:.15s}
+  .tab svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.9}
+  .tab.on{color:var(--accent)}
+  .tab.center{position:relative}
+  .tab.center .fab{width:52px;height:52px;margin-top:-22px;border-radius:17px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:grid;place-items:center;box-shadow:0 10px 24px rgba(91,141,239,.45)}
+  .tab.center .fab svg{stroke:#fff;stroke-width:2.3;width:25px;height:25px}
+  .tab.center span{margin-top:2px}
+
+  /* ---------- cards / generic ---------- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:14px}
+  .card.grad{background:linear-gradient(150deg,#1a2542,#141a2b);border-color:#2a3552}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:999px;
+    background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+  .pill .dot{width:6px;height:6px;border-radius:50%}
+  .muted{color:var(--ink-2)}
+  .tiny{font-size:12px;color:var(--ink-3)}
+
+  /* hero cta */
+  .hero-cta{position:relative;overflow:hidden;
+    background:linear-gradient(140deg,#25335c 0%,#2b2350 100%);border:1px solid #38406b;border-radius:22px;padding:20px;margin-bottom:16px}
+  .hero-cta h3{margin:0 0 6px;font-size:17px}
+  .hero-cta p{margin:0 0 15px;font-size:13px;color:#c7cfe6}
+  .hero-cta .go{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#1a2036;font-weight:700;font-size:13.5px;
+    padding:10px 16px;border-radius:12px;border:none;cursor:pointer}
+  .hero-cta .glow{position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;
+    background:radial-gradient(circle,rgba(124,92,255,.5),transparent 70%)}
+
+  .sec-h{display:flex;align-items:center;justify-content:space-between;margin:20px 4px 10px}
+  .sec-h h4{margin:0;font-size:14px;font-weight:700}
+  .sec-h a{font-size:12px;color:var(--accent);text-decoration:none;font-weight:600}
+
+  .idea-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line-soft)}
+  .idea-row:last-child{border-bottom:none}
+  .idea-row.clk,.hold.clk{cursor:pointer}
+  .idea-row.clk:active,.hold.clk:active{opacity:.6}
+  .chev{color:var(--ink-3);font-size:20px;margin-left:8px;flex:0 0 auto}
+  .tick{width:40px;height:40px;border-radius:12px;background:var(--surface-2);display:grid;place-items:center;font-weight:700;font-size:13px;flex:0 0 auto}
+  .idea-row .mid{flex:1;min-width:0}
+  .idea-row .mid b{font-size:14px;display:block}
+  .idea-row .mid span{font-size:12px;color:var(--ink-3)}
+  .badge-s{font-size:11px;font-weight:700;padding:4px 9px;border-radius:8px;white-space:nowrap}
+  .badge-s.hot{background:rgba(240,103,143,.14);color:var(--emotion)}
+  .badge-s.wait{background:rgba(230,169,58,.14);color:var(--warn)}
+  .badge-s.pass{background:rgba(97,108,130,.16);color:var(--ink-2)}
+  .badge-s.own{background:rgba(55,201,139,.14);color:var(--ok)}
+
+  .bounds-mini{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 16px;margin-top:6px}
+  .bounds-mini .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin-bottom:10px}
+  .bounds-mini .r{display:flex;gap:9px;font-size:12.5px;color:var(--ink-2);margin:7px 0}
+  .bounds-mini .r::before{content:"";flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:7px}
+
+  /* ---------- agent chat ---------- */
+  .chat{flex:1;overflow-y:auto;padding:4px 16px 20px;scrollbar-width:none;display:flex;flex-direction:column;gap:12px}
+  .chat::-webkit-scrollbar{display:none}
+  .msg{max-width:86%;display:flex;flex-direction:column;gap:5px;animation:pop .32s cubic-bezier(.2,.8,.3,1)}
+  @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+  .msg.agent{align-self:flex-start}
+  .msg.user{align-self:flex-end;align-items:flex-end}
+  .msg .who{font-size:11px;color:var(--ink-3);padding:0 4px;display:flex;align-items:center;gap:6px}
+  .msg .who .a-ic{width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:inline-grid;place-items:center;font-size:9px;font-weight:800;color:#fff}
+  .bubble{background:var(--surface-2);border:1px solid var(--line);padding:11px 14px;border-radius:16px;border-bottom-left-radius:5px;
+    font-size:14px;line-height:1.6}
+  .msg.user .bubble{background:linear-gradient(135deg,var(--accent),#4c7ce0);border:none;color:#fff;border-radius:16px;border-bottom-right-radius:5px}
+  .bubble.wide{width:100%}
+
+  .typing{display:flex;gap:4px;padding:14px}
+  .typing span{width:7px;height:7px;border-radius:50%;background:var(--ink-3);animation:blink 1.2s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+  /* rich analysis card inside chat */
+  .rc{background:var(--surface);border:1px solid var(--line);border-radius:16px;border-bottom-left-radius:5px;overflow:hidden;width:100%}
+  .rc-h{padding:12px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--line-soft)}
+  .rc-h .b{width:24px;height:24px;border-radius:7px;background:var(--accent);color:#fff;font-weight:800;font-size:12px;display:grid;place-items:center}
+  .rc-h .t{font-size:13.5px;font-weight:700}
+  .rc-h .ph{margin-left:auto;font-size:10.5px;color:var(--ink-3);background:var(--surface-2);padding:3px 8px;border-radius:7px}
+  .rc-b{padding:6px 14px 14px}
+  .line{padding:11px 0;border-bottom:1px solid var(--line-soft)}
+  .line:last-child{border-bottom:none}
+  .line .k{font-size:11px;color:var(--ink-3);font-weight:600;margin-bottom:4px;letter-spacing:.03em}
+  .line .v{font-size:13.5px;line-height:1.55}
+  .line .v b{color:#fff}
+  .metaline{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:11.5px;padding:4px 9px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+  .chip b{color:var(--ink)}
+  .claim{border-left:3px solid;border-radius:7px;padding:8px 11px;background:var(--surface-2);margin-top:7px}
+  .claim .ch{font-size:11.5px;font-weight:700;margin-bottom:3px;display:flex;gap:6px;align-items:center}
+  .claim .cn{font-size:9.5px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:0 5px;color:var(--ink-3)}
+  .claim .cb{font-size:12.5px;color:var(--ink-2);line-height:1.5}
+  .claim.fact{border-color:var(--fact)}.claim.fact .ch{color:var(--fact)}
+  .claim.interp{border-color:var(--interp)}.claim.interp .ch{color:var(--interp)}
+  .claim.predict{border-color:var(--predict)}.claim.predict .ch{color:var(--predict)}
+  .claim.emotion{border-color:var(--emotion)}.claim.emotion .ch{color:var(--emotion)}
+  .rc-note{background:rgba(230,169,58,.1);border-top:1px solid rgba(230,169,58,.25);padding:10px 14px;font-size:12px;color:#e8d3a6}
+  .rc-note b{color:var(--warn)}
+
+  /* choice chips in chat */
+  .choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;align-self:flex-start;max-width:90%}
+  .choice{background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-size:13px;font-weight:600;
+    padding:9px 14px;border-radius:13px;cursor:pointer;transition:.15s;animation:pop .3s}
+  .choice:hover{background:var(--accent-soft)}
+  .choice:active{transform:scale(.96)}
+
+  /* draft editor in chat */
+  .draft{width:100%}
+  .draft label{display:block;font-size:11px;color:var(--ink-3);font-weight:600;margin:11px 0 5px}
+  .draft textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;color:var(--ink);
+    font-family:var(--font);font-size:13px;line-height:1.55;padding:10px;resize:none}
+  .draft textarea:focus{outline:none;border-color:var(--accent)}
+  .draft textarea.chg{border-color:var(--fact)}
+  .draft .mark{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);margin-top:12px}
+  .draft .mark input{width:16px;height:16px;accent-color:var(--accent)}
+  .valid{font-size:12px;margin-top:10px;padding:8px 11px;border-radius:9px;display:none}
+  .valid.err{display:block;background:rgba(240,103,143,.12);color:var(--emotion)}
+
+  /* composer / gate buttons */
+  .gate{align-self:stretch;padding:6px 16px 4px}
+  .gate .cta{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:#fff;font-weight:700;
+    font-size:14.5px;padding:14px;border-radius:15px;cursor:pointer;font-family:var(--font);box-shadow:0 8px 22px rgba(91,141,239,.35)}
+  .gate .cta:active{transform:scale(.99)}
+  .gate .suggest{width:100%;background:var(--surface);border:1px dashed var(--line);color:var(--ink-2);text-align:left;
+    padding:13px 15px;border-radius:15px;cursor:pointer;font-family:var(--font);font-size:13px;line-height:1.5}
+  .gate .suggest b{color:var(--accent);display:block;font-size:11px;margin-bottom:4px;font-weight:700}
+
+  .composer{flex:0 0 auto;padding:10px 14px 26px;border-top:1px solid var(--line-soft);background:var(--app)}
+  .composer .fake{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:11px 15px;color:var(--ink-3);font-size:13px}
+  .composer .fake .snd{margin-left:auto;width:30px;height:30px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center}
+  .composer .fake .snd svg{width:15px;height:15px;stroke:var(--ink-3);fill:none;stroke-width:2}
+
+  /* library */
+  .princ{background:linear-gradient(140deg,#1c2740,#171c2b);border:1px solid #2b3552;border-radius:16px;padding:15px;margin-bottom:12px}
+  .princ .q{font-size:11px;color:var(--accent);font-weight:700;margin-bottom:7px;letter-spacing:.03em}
+  .princ .p{font-size:14.5px;line-height:1.5;margin-bottom:9px}
+  .princ .nxt{font-size:12px;color:var(--ink-2);border-top:1px dashed var(--line);padding-top:9px}
+  .princ .nxt b{color:var(--ink)}
+
+  .jcard{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:14px;margin-bottom:11px}
+  .jcard .top{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .jcard .top .tick{width:34px;height:34px;border-radius:9px;font-size:12px}
+  .jcard .top b{font-size:14px}
+  .jcard .top .date{margin-left:auto;font-size:11px;color:var(--ink-3)}
+  .jcard .stance{font-size:13px;color:var(--ink-2);background:var(--surface-2);border-radius:9px;padding:9px 11px;line-height:1.5}
+  .jcard .stance .lb{font-size:10.5px;color:var(--ink-3);display:block;margin-bottom:3px;font-weight:600}
+  .jcard .foot{display:flex;gap:6px;margin-top:9px}
+
+  /* profile */
+  .prof-head{display:flex;flex-direction:column;align-items:center;text-align:center;padding:10px 0 18px}
+  .prof-head .av{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,#3a4a6b,#5b4d8a);display:grid;place-items:center;font-size:28px;font-weight:700;margin-bottom:12px}
+  .prof-head h3{margin:0 0 3px;font-size:19px}
+  .prof-head span{font-size:13px;color:var(--ink-3)}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:14px 8px;text-align:center}
+  .stat b{display:block;font-size:22px;font-weight:800}
+  .stat span{font-size:11px;color:var(--ink-3)}
+  .list-item{display:flex;align-items:center;gap:13px;padding:15px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:9px;font-size:14px}
+  .list-item svg{width:19px;height:19px;stroke:var(--ink-2);fill:none;stroke-width:1.8}
+  .list-item .arr{margin-left:auto;color:var(--ink-3)}
+  .toggle{margin-left:auto;width:42px;height:25px;border-radius:999px;background:var(--accent);position:relative}
+  .toggle::after{content:"";position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;background:#fff}
+
+  .backbtn{background:none;border:none;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:5px;font-size:15px;font-weight:600;padding:0}
+  .backbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2}
+
+  .agent-head{display:flex;align-items:center;gap:11px}
+  .agent-head .h-av{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;position:relative}
+  .agent-head .h-av::after{content:"";position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--ok);border:2px solid var(--app)}
+  .agent-head .n{font-size:15px;font-weight:700}
+  .agent-head .s{font-size:11.5px;color:var(--ok)}
+
+  .flow-steps{display:flex;gap:6px;padding:0 18px 12px;flex:0 0 auto}
+  .flow-steps span{flex:1;height:28px;border-radius:9px;display:grid;place-items:center;font-size:11px;font-weight:700;
+    background:var(--surface-2);border:1px solid var(--line);color:var(--ink-3);transition:.25s;position:relative}
+  .flow-steps span.active{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(91,141,239,.4)}
+  .flow-steps span.done{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+  .flow-steps span.done::after{content:"✓";position:absolute;font-size:9px;top:2px;right:5px;opacity:.7}
+
+  /* ---------- portfolio ---------- */
+  .pf-hero{background:linear-gradient(140deg,#1b2a44,#191f30);border:1px solid #2c3a5c;border-radius:22px;padding:20px;margin-bottom:14px}
+  .pf-hero .lb{font-size:12px;color:var(--ink-2)}
+  .pf-hero .tot{font-size:33px;font-weight:800;letter-spacing:.01em;margin:2px 0 6px}
+  .pf-hero .chg{font-size:13.5px;font-weight:700}
+  .pf-hero .chg.up{color:var(--ok)} .pf-hero .chg.down{color:var(--emotion)}
+  .spark{width:100%;height:44px;margin-top:12px;display:block}
+  .hold{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line-soft)}
+  .hold:last-child{border-bottom:none}
+  .hold .mid{flex:1;min-width:0}
+  .hold .mid b{font-size:14px;display:block}
+  .hold .mid .sh{font-size:11.5px;color:var(--ink-3)}
+  .hold .mid .hh{font-size:11px;color:var(--accent);margin-top:3px;display:inline-flex;align-items:center;gap:4px}
+  .hold .mid .hh .a-ic{width:13px;height:13px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:inline-grid;place-items:center;font-size:8px;font-weight:800;color:#fff}
+  .hold .rt{text-align:right;flex:0 0 auto}
+  .hold .rt .mv{font-size:14px;font-weight:700}
+  .hold .rt .pnl{font-size:12px;font-weight:700}
+  .pnl.up{color:var(--ok)} .pnl.down{color:var(--emotion)}
+  .exec-note{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:12px 14px;font-size:12px;color:var(--ink-2);margin-top:14px;display:flex;gap:9px}
+  .exec-note::before{content:"";flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:7px}
+
+  /* ---------- order / trade ---------- */
+  .sel-stock{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:14px}
+  .sel-stock .tick{width:44px;height:44px;border-radius:12px}
+  .sel-stock .mid{flex:1}
+  .sel-stock .mid b{font-size:16px;display:block}
+  .sel-stock .mid span{font-size:12px;color:var(--ink-3)}
+  .sel-stock .px{text-align:right}
+  .sel-stock .px .p{font-size:17px;font-weight:800}
+  .sel-stock .px .t{font-size:11px;color:var(--ink-3)}
+  .seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:16px}
+  .seg button{flex:1;border:none;background:none;color:var(--ink-2);font-family:var(--font);font-size:14px;font-weight:700;padding:10px;border-radius:11px;cursor:pointer;transition:.15s}
+  .seg button.on-buy{background:var(--ok);color:#06231a}
+  .seg button.on-sell{background:var(--emotion);color:#2a0a14}
+  .field{margin-bottom:14px}
+  .field .fl{font-size:12px;color:var(--ink-3);font-weight:600;margin-bottom:7px}
+  .field .box{display:flex;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:4px 6px 4px 14px}
+  .field .box .val{flex:1;font-size:16px;font-weight:700}
+  .field .box .unit{font-size:12px;color:var(--ink-3);margin-right:8px}
+  .stepbtn{width:38px;height:38px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);font-size:20px;cursor:pointer;display:grid;place-items:center}
+  .stepbtn:active{transform:scale(.92)}
+  .est{display:flex;justify-content:space-between;font-size:13px;padding:13px 15px;background:var(--surface);border:1px solid var(--line);border-radius:13px;margin-bottom:14px}
+  .est b{font-size:15px}
+  .hunch-banner{background:linear-gradient(140deg,#1a2540,#171d2e);border:1px solid #2c3a5c;border-radius:15px;padding:14px;margin-bottom:16px}
+  .hunch-banner .hb-h{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;margin-bottom:8px}
+  .hunch-banner .hb-h .a-ic{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff}
+  .hunch-banner .st{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+  .hunch-banner .st .chip{font-size:11.5px;padding:4px 9px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+  .hunch-banner .st .chip b{color:var(--ink)}
+  .hunch-banner .stance-q{font-size:13px;color:var(--ink);line-height:1.5}
+  .hunch-banner .stance-q b{color:var(--accent)}
+  .hunch-banner .runlink{margin-top:10px;font-size:12.5px;color:var(--accent);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .order-cta{width:100%;border:none;color:#fff;font-weight:800;font-size:15.5px;padding:16px;border-radius:16px;cursor:pointer;font-family:var(--font)}
+  .order-cta.buy{background:var(--ok);color:#06231a;box-shadow:0 8px 22px rgba(55,201,139,.3)}
+  .order-cta.sell{background:var(--emotion);color:#2a0a14;box-shadow:0 8px 22px rgba(240,103,143,.3)}
+  .order-cta:active{transform:scale(.99)}
+  .order-boundary{text-align:center;font-size:11.5px;color:var(--ink-3);margin-top:11px;line-height:1.5}
+  .order-boundary b{color:var(--ink-2)}
+
+  /* ---------- confirm sheet ---------- */
+  .sheet-mask{position:absolute;inset:0;background:rgba(3,5,9,.6);backdrop-filter:blur(3px);z-index:70;opacity:0;pointer-events:none;transition:.28s}
+  .sheet-mask.show{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--app);border-top:1px solid var(--line);border-radius:26px 26px 0 0;
+    padding:26px 22px 34px;z-index:71;transform:translateY(110%);transition:transform .34s cubic-bezier(.3,.9,.3,1)}
+  .sheet.show{transform:none}
+  .sheet .grip{width:40px;height:4px;border-radius:99px;background:var(--surface-3);margin:0 auto 18px}
+  .sheet .ok-ic{width:60px;height:60px;border-radius:50%;background:var(--ok);color:#06231a;display:grid;place-items:center;font-size:30px;margin:0 auto 14px;font-weight:800}
+  .sheet h3{text-align:center;margin:0 0 6px;font-size:19px}
+  .sheet .sub{text-align:center;color:var(--ink-3);font-size:13px;margin-bottom:18px}
+  .sheet .recpt{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 15px;margin-bottom:18px}
+  .sheet .recpt .r{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px}
+  .sheet .recpt .r:last-child{border-bottom:none}
+  .sheet .recpt .r span{color:var(--ink-3)} .sheet .recpt .r b{font-weight:700}
+  .sheet .btns{display:flex;gap:10px}
+  .sheet .btns button{flex:1;padding:14px;border-radius:14px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;border:none}
+  .sheet .btns .ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--ink)}
+  .sheet .btns .fill{background:var(--accent);color:#fff}
+
+  /* ---------- real composer ---------- */
+  .comp-box{display:flex;align-items:center;gap:9px;background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:6px 6px 6px 15px}
+  .comp-box input{flex:1;background:none;border:none;outline:none;color:var(--ink);font-family:var(--font);font-size:14px}
+  .comp-box input::placeholder{color:var(--ink-3)}
+  .comp-box .snd{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--accent);display:grid;place-items:center;cursor:pointer;border:none}
+  .comp-box .snd svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2}
+  .comp-box .snd:disabled{background:var(--surface-3);cursor:default}
+  .comp-box .snd:disabled svg{stroke:var(--ink-3)}
+  .skip-hint{text-align:center;font-size:11px;color:var(--ink-3);padding:2px 0 6px;opacity:.8}
+
+  /* ---------- quick qty + balance ---------- */
+  .qchips{display:flex;gap:7px;margin:-4px 0 14px}
+  .qchips button{flex:1;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);font-family:var(--font);
+    font-size:12.5px;font-weight:600;padding:8px 0;border-radius:10px;cursor:pointer}
+  .qchips button:active{background:var(--accent-soft)}
+  .box input.val{background:none;border:none;outline:none;font-family:var(--font)}
+  .bal{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);padding:0 3px;margin:-6px 0 14px}
+  .bal.over{color:var(--emotion);font-weight:600}
+  .order-cta:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+
+  /* ---------- toast ---------- */
+  .toast{position:absolute;left:50%;bottom:104px;transform:translate(-50%,20px);background:#000;color:#fff;
+    font-size:13px;font-weight:600;padding:11px 18px;border-radius:12px;z-index:80;opacity:0;pointer-events:none;
+    transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:80%;text-align:center}
+  .toast.show{opacity:.96;transform:translate(-50%,0)}
+
+  /* ---------- toggle off state ---------- */
+  .toggle{cursor:pointer;transition:background .2s}
+  .toggle.off{background:var(--surface-3)}
+  .toggle::after{transition:right .2s,left .2s}
+  .toggle.off::after{right:auto;left:3px}
+
+  /* ---------- home library entry ---------- */
+  .lib-entry{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);
+    border-radius:18px;padding:15px 16px;margin-bottom:16px;cursor:pointer}
+  .lib-entry .ic{width:42px;height:42px;border-radius:12px;background:var(--accent-soft);display:grid;place-items:center;flex:0 0 auto}
+  .lib-entry .ic svg{width:21px;height:21px;stroke:var(--accent);fill:none;stroke-width:1.9}
+  .lib-entry .mid{flex:1}
+  .lib-entry .mid b{font-size:14px;display:block}
+  .lib-entry .mid span{font-size:12px;color:var(--ink-3)}
+  .lib-entry .arr{color:var(--ink-3);font-size:20px}
+
+  /* ---------- onboarding ---------- */
+  .onboard{position:absolute;inset:0;z-index:90;background:linear-gradient(160deg,#0c1220,#141026);
+    display:flex;flex-direction:column;justify-content:flex-end;padding:0 24px 40px;opacity:1;transition:opacity .3s}
+  .onboard.hide{opacity:0;pointer-events:none}
+  .onboard .ob-top{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+  .onboard .ob-logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:27px;margin-bottom:20px;box-shadow:0 10px 30px rgba(91,141,239,.45)}
+  .onboard h2{font-size:26px;margin:0 0 8px;color:#fff;line-height:1.35}
+  .onboard h2 em{font-style:normal;color:var(--accent)}
+  .onboard .ob-sub{color:#aab2c2;font-size:14px;margin-bottom:26px;line-height:1.6}
+  .onboard .ob-pt{display:flex;gap:12px;margin:14px 0;color:#e8ebf1;font-size:13.5px;align-items:flex-start}
+  .onboard .ob-pt .n{flex:0 0 auto;width:26px;height:26px;border-radius:8px;background:rgba(91,141,239,.18);color:var(--accent);
+    display:grid;place-items:center;font-weight:800;font-size:12px}
+  .onboard .ob-pt b{color:#fff}
+  .onboard .ob-cta{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:#fff;
+    font-weight:700;font-size:15.5px;padding:16px;border-radius:16px;cursor:pointer;font-family:var(--font);margin-top:10px;box-shadow:0 10px 26px rgba(91,141,239,.4)}
+  .onboard .ob-skip{width:100%;background:none;border:none;color:#727c8f;font-size:13px;padding:14px;cursor:pointer;font-family:var(--font)}
+
+  /* ---------- light theme ---------- */
+  body.light{--bg:#eaeef4;--app:#ffffff;--surface:#ffffff;--surface-2:#f2f5fa;--surface-3:#e5eaf2;
+    --line:#e1e6ef;--line-soft:#eef1f6;--ink:#1a1f2b;--ink-2:#515b6e;--ink-3:#8c95a7;--accent-soft:#e8effc;
+    background:radial-gradient(1200px 700px at 20% -10%, #dbe6fb 0%, transparent 55%),
+               radial-gradient(1000px 700px at 100% 110%, #e7e1fb 0%, transparent 50%), #eaeef4;}
+  body.light .hero-cta{background:linear-gradient(140deg,#4d7ff0,#7c5cff);border-color:transparent}
+  body.light .hero-cta p{color:#e6ecfb}
+  body.light .pf-hero{background:linear-gradient(140deg,#eaf0fc,#f4effe);border-color:#dde5f3}
+  body.light .hunch-banner{background:linear-gradient(140deg,#eef3fc,#f5f1fe);border-color:#dde5f3}
+  body.light .princ{background:linear-gradient(140deg,#eef3fc,#f6f2fe);border-color:#dfe6f4}
+  body.light .flow-steps span.active{color:#fff}
+  body.light .phone{box-shadow:0 0 0 11px #cfd6e4, 0 0 0 13px #b8c0d2, 0 40px 90px rgba(60,70,100,.35)}
+  body.light .toast{background:#1a1f2b}
+
+  /* ---------- scanner ---------- */
+  .scan-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line-soft);cursor:pointer}
+  .scan-row:last-child{border-bottom:none}
+  .scan-row .st-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .scan-row .st-dot.hold{background:var(--ok);box-shadow:0 0 0 4px rgba(55,201,139,.15)}
+  .scan-row .st-dot.trig{background:var(--emotion);box-shadow:0 0 0 4px rgba(240,103,143,.2);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(240,103,143,.2)}50%{box-shadow:0 0 0 7px rgba(240,103,143,.05)}}
+  .scan-row .mid{flex:1;min-width:0}
+  .scan-row .mid b{font-size:14px;display:block}
+  .scan-row .mid span{font-size:11.5px;color:var(--ink-3);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .scan-row .stat{font-size:11px;font-weight:700;padding:4px 9px;border-radius:8px;white-space:nowrap}
+  .scan-row .stat.hold{background:rgba(55,201,139,.14);color:var(--ok)}
+  .scan-row .stat.trig{background:rgba(240,103,143,.16);color:var(--emotion)}
+  .scan-sim{width:100%;margin-top:8px;background:var(--surface);border:1px dashed var(--line);color:var(--ink-2);
+    font-family:var(--font);font-size:12.5px;padding:11px;border-radius:12px;cursor:pointer}
+  .scan-sim:active{background:var(--surface-2)}
+
+  /* ---------- monitor detail ---------- */
+  .mon-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;margin-bottom:4px}
+  .mon-badge.hold{background:rgba(55,201,139,.14);color:var(--ok)}
+  .mon-badge.trig{background:rgba(240,103,143,.16);color:var(--emotion)}
+  .mon-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:15px 16px;margin-bottom:12px}
+  .mon-card .lb{font-size:11px;color:var(--ink-3);font-weight:700;letter-spacing:.03em;margin-bottom:7px;display:flex;align-items:center;gap:7px}
+  .mon-card .lb .tag{font-size:10px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:5px}
+  .mon-card .bd{font-size:14px;line-height:1.55}
+  .mon-card.warn{border-color:rgba(240,103,143,.4);background:linear-gradient(140deg,rgba(240,103,143,.06),transparent)}
+  .mon-card .sig{font-size:12px;font-weight:700;margin-top:8px}
+  .mon-card .sig.on{color:var(--emotion)} .mon-card .sig.off{color:var(--ink-3)}
+  .mon-card textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;color:var(--ink);
+    font-family:var(--font);font-size:13.5px;line-height:1.55;padding:11px;resize:none;margin-top:4px}
+  .mon-card textarea:focus{outline:none;border-color:var(--accent)}
+  .mon-compare{display:flex;gap:10px}
+  .mon-compare .c{flex:1;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:12px;padding:11px 12px}
+  .mon-compare .c .k{font-size:10.5px;color:var(--ink-3);margin-bottom:4px}
+  .mon-compare .c .v{font-size:13px;font-weight:600}
+  .mon-acts{display:flex;gap:10px;margin-top:6px}
+  .mon-acts button{flex:1;padding:13px;border-radius:13px;font-family:var(--font);font-size:13.5px;font-weight:700;cursor:pointer;border:none}
+  .mon-acts .ghost{background:var(--surface-2);border:1px solid var(--line);color:var(--ink)}
+  .mon-acts .fill{background:var(--accent);color:#fff}
+
+  /* ---------- push notification ---------- */
+  .push{position:absolute;left:12px;right:12px;top:44px;z-index:95;background:rgba(28,32,44,.86);backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:13px 15px;display:flex;gap:12px;align-items:flex-start;
+    box-shadow:0 16px 40px rgba(0,0,0,.5);transform:translateY(-140%);transition:transform .42s cubic-bezier(.2,.9,.3,1);cursor:pointer}
+  .push.show{transform:none}
+  body.light .push{background:rgba(255,255,255,.9);border-color:rgba(20,30,50,.08)}
+  .push .p-ic{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--emotion),#c0456a);display:grid;place-items:center;flex:0 0 auto;font-size:17px}
+  .push .p-bd{flex:1;min-width:0}
+  .push .p-bd .p-h{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);margin-bottom:3px}
+  .push .p-bd .p-h b{color:var(--ink);font-weight:700}
+  .push .p-bd .p-t{font-size:13.5px;font-weight:700;margin-bottom:2px}
+  .push .p-bd .p-x{font-size:12.5px;color:var(--ink-2);line-height:1.45}
+
+  /* ---------- judgment style ---------- */
+  .style-card{background:linear-gradient(155deg,#1c2436,#161b28);border:1px solid #2a3350;border-radius:18px;padding:17px;margin-bottom:14px}
+  body.light .style-card{background:linear-gradient(155deg,#eef3fc,#f5f2fe);border-color:#dde5f3}
+  .style-fp{font-size:14px;line-height:1.55;margin-bottom:14px}
+  .style-fp b{color:var(--accent)}
+  .tend-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;margin-bottom:9px;background:var(--surface-2)}
+  .tend-bar i{display:block;height:100%}
+  .tend-leg{display:flex;gap:15px;font-size:11.5px;color:var(--ink-2);flex-wrap:wrap;margin-bottom:6px}
+  .tend-leg span{display:inline-flex;align-items:center;gap:5px}
+  .tend-leg .d{width:8px;height:8px;border-radius:2px}
+  .mirror{display:flex;gap:11px;padding:12px 0;border-top:1px solid var(--line-soft);align-items:flex-start}
+  .mirror .mi{flex:0 0 auto;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:14px}
+  .mirror .mi.ok{background:rgba(55,201,139,.14)} .mirror .mi.warn{background:rgba(240,103,143,.14)} .mirror .mi.neu{background:var(--surface-2)}
+  .mirror .mt{font-size:13px;line-height:1.5;color:var(--ink-2)}
+  .mirror .mt b{color:var(--ink)}
+  .mirror .mt .big{font-weight:800;font-size:14px}
+  .mirror .mt .big.warn{color:var(--emotion)} .mirror .mt .big.ok{color:var(--ok)}
+  .style-foot{font-size:11px;color:var(--ink-3);margin-top:12px;padding-top:11px;border-top:1px solid var(--line-soft)}
+</style>
+</head>
+<body>
+
+<div class="desk-note">
+  <b>Hunch It</b>
+  交易判斷 Agent — 互動原型 Demo。<br>把一段創作者內容，走過一條完整的判斷流程，收斂成你自己擁有的立場。
+  <div class="b3">
+    <span>Agent 對話式引導 A → B → C → D → F</span>
+    <span>判斷庫累積 · 案例抽原則</span>
+    <span>濾網不是標籤，永不下買賣指令</span>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar">
+    <span>9:41</span>
+    <span class="icons">
+      <svg viewBox="0 0 18 12"><path d="M1 8h2v3H1zM5 6h2v5H5zM9 4h2v7H9zM13 1h2v10h-2z"/></svg>
+      <svg viewBox="0 0 18 12"><path d="M9 2.5c2.3 0 4.4.9 6 2.4l-1.2 1.2A6.9 6.9 0 0 0 9 4.3c-1.9 0-3.6.7-4.8 1.8L3 4.9A8.9 8.9 0 0 1 9 2.5zm0 3.6c1.3 0 2.5.5 3.4 1.4l-1.2 1.2A2.9 2.9 0 0 0 9 7.7c-.8 0-1.6.3-2.2.9L5.6 7.4A4.4 4.4 0 0 1 9 6.1zm0 3.4 1.4 1.4L9 12l-1.4-1.5L9 9.5z"/></svg>
+      <svg viewBox="0 0 18 12"><rect x="0.5" y="1.5" width="14" height="9" rx="2.5" fill="none" stroke="currentColor"/><rect x="2" y="3" width="10.5" height="6" rx="1"/><rect x="15.5" y="4" width="1.6" height="4" rx="1"/></svg>
+    </span>
+  </div>
+
+  <div class="viewport">
+
+    <!-- ===================== HOME ===================== -->
+    <section class="screen active" id="scr-home">
+      <div class="appbar">
+        <div>
+          <div class="title">早安，Sandy</div>
+          <div class="sub">今天有想跟的想法嗎？</div>
+        </div>
+        <div class="avatar">S</div>
+      </div>
+      <div class="body">
+        <div class="hero-cta">
+          <div class="glow"></div>
+          <div class="pill" style="background:rgba(255,255,255,.12);border-color:transparent;color:#dfe6f7;margin-bottom:11px">
+            <span class="dot" style="background:var(--ok)"></span>Hunch Agent 在線
+          </div>
+          <h3>看到一個創作者的股票想法？</h3>
+          <p>貼給我，我帶你 5 分鐘看懂它、看它怎麼會錯、看你是不是接後手，最後寫成你自己的判斷。</p>
+          <button class="go" onclick="startAgent()">開始判斷 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a2036" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        </div>
+
+        <div class="lib-entry" onclick="go('library')">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2V5zM8 3v18"/></svg></div>
+          <div class="mid"><b>我的判斷庫</b><span id="libCount">2 個原則 · 3 筆判斷</span></div>
+          <span class="arr">›</span>
+        </div>
+
+        <div class="sec-h"><h4>追蹤中的想法</h4><a onclick="go('library')">全部</a></div>
+        <div class="card" style="padding:4px 16px">
+          <div class="idea-row clk" onclick="openOrder('MU')">
+            <div class="tick">MU</div>
+            <div class="mid"><b>美光 Micron</b><span>AI / HBM 超級循環 · 注意力 高</span></div>
+            <span class="badge-s wait">你偏後手</span><span class="chev">›</span>
+          </div>
+          <div class="idea-row clk" onclick="openOrder('NVDA')">
+            <div class="tick">NVDA</div>
+            <div class="mid"><b>輝達 Nvidia</b><span>AI 算力 · 你的立場：先等</span></div>
+            <span class="badge-s hot">敘事過熱</span><span class="chev">›</span>
+          </div>
+          <div class="idea-row clk" onclick="openOrder('TSLA')">
+            <div class="tick">TSLA</div>
+            <div class="mid"><b>特斯拉 Tesla</b><span>Robotaxi · 你已放掉</span></div>
+            <span class="badge-s pass">已放掉</span><span class="chev">›</span>
+          </div>
+        </div>
+
+        <div class="sec-h"><h4>最近的判斷</h4></div>
+        <div class="card" style="padding:4px 16px">
+          <div class="idea-row">
+            <div class="tick" style="background:rgba(55,201,139,.12);color:var(--ok)">✓</div>
+            <div class="mid"><b>ARM 想法</b><span>「我先等財報，再決定」</span></div>
+            <span class="badge-s own">你的立場</span>
+          </div>
+          <div class="idea-row">
+            <div class="tick" style="background:rgba(55,201,139,.12);color:var(--ok)">✓</div>
+            <div class="mid"><b>Palantir 想法</b><span>「故事好，但我是後手，放掉」</span></div>
+            <span class="badge-s own">你的立場</span>
+          </div>
+        </div>
+
+        <div class="bounds-mini">
+          <div class="h">Hunch 的三條邊界</div>
+          <div class="r">不給進場價、停損、倉位或財務建議</div>
+          <div class="r">只描述狀態，不下「買 / 不買」指令</div>
+          <div class="r">所有立場句由你擁有；我是濾網不是標籤</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== AGENT ===================== -->
+    <section class="screen" id="scr-agent">
+      <div class="appbar" style="padding-bottom:14px;border-bottom:1px solid var(--line-soft)">
+        <div class="agent-head">
+          <button class="backbtn" onclick="go('home')" style="margin-right:2px"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <div class="h-av">H</div>
+          <div>
+            <div class="n">Hunch Agent</div>
+            <div class="s">● 判斷中 · 不做投資建議</div>
+          </div>
+        </div>
+        <button class="backbtn" onclick="resetAgent()" title="重來"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4"/></svg></button>
+      </div>
+      <div class="flow-steps" id="flowSteps">
+        <span data-s="A">A 看懂</span><span data-s="B">B 假設</span><span data-s="C">C 下行</span><span data-s="D">D 位置</span><span data-s="F">F 草稿</span>
+      </div>
+      <div class="skip-hint" id="skipHint">點對話任一處可跳過動畫</div>
+      <div class="chat" id="chat" onclick="skipPending()"></div>
+      <div class="composer">
+        <div class="comp-box">
+          <input id="compInput" placeholder="輸入你的想法或貼上內容…" autocomplete="off"
+            onkeydown="if(event.key==='Enter')compSend()" oninput="document.getElementById('compSend').disabled=!this.value.trim()">
+          <button class="snd" id="compSend" disabled onclick="compSend()"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== LIBRARY ===================== -->
+    <section class="screen" id="scr-library">
+      <div class="appbar">
+        <div>
+          <div class="title">判斷庫</div>
+          <div class="sub">你評估過的想法，和學到的原則</div>
+        </div>
+        <div class="logo-badge">H</div>
+      </div>
+      <div class="body">
+        <div class="sec-h"><h4>我的判斷風格</h4><span class="tiny">越用越準 · 候選 I</span></div>
+        <div id="styleBox"></div>
+
+        <div class="sec-h"><h4>我學到的原則</h4><span class="tiny">從案例抽出 · 候選 G</span></div>
+        <div id="princ-live"></div>
+
+        <div class="sec-h"><h4>我的判斷紀錄</h4><span class="tiny">候選 I</span></div>
+        <div id="jrecords-live"></div>
+      </div>
+    </section>
+
+    <!-- ===================== PROFILE ===================== -->
+    <section class="screen" id="scr-me">
+      <div class="appbar"><div class="title">我</div><div class="logo-badge">H</div></div>
+      <div class="body">
+        <div class="prof-head">
+          <div class="av">S</div>
+          <h3>Sandy</h3>
+          <span>有能力看懂，只是沒時間 · 加入 12 天</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="stJudge">0</b><span>判斷次數</span></div>
+          <div class="stat"><b id="stPrinc">0</b><span>學到的原則</span></div>
+          <div class="stat"><b id="stOrder">0</b><span>模擬委託</span></div>
+        </div>
+        <div class="list-item clk" style="cursor:pointer" onclick="toast('邊界設定為固定值，示範中不可調')"><svg viewBox="0 0 24 24"><path d="M12 2 4 7v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V7l-8-5z"/></svg>判斷邊界設定<span class="arr">›</span></div>
+        <div class="list-item clk" style="cursor:pointer" onclick="toggleSwitch(this,'原則回放提醒')"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>原則回放提醒<div class="toggle"></div></div>
+        <div class="list-item clk" style="cursor:pointer" onclick="toggleSwitch(this,'每日想法摘要')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>每日想法摘要<div class="toggle off"></div></div>
+        <div class="list-item clk" style="cursor:pointer" onclick="toggleTheme(this)"><svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6 6 4.5 4.5M19.5 19.5 18 18M6 18l-1.5 1.5M19.5 4.5 18 6"/><circle cx="12" cy="12" r="4"/></svg>淺色模式<div class="toggle off" id="themeToggle"></div></div>
+        <div class="list-item clk" onclick="clearDemo()" style="cursor:pointer"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>清除 demo 資料（判斷與委託）<span class="arr">›</span></div>
+        <div class="bounds-mini" style="margin-top:14px">
+          <div class="h">為什麼 Hunch 不給買賣建議</div>
+          <div class="r">我的角色是讓你的判斷變清楚、變可見，不是替你判斷。立場永遠是你自己的一句話。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PORTFOLIO ===================== -->
+    <section class="screen" id="scr-portfolio">
+      <div class="appbar">
+        <div><div class="title">持倉</div><div class="sub">你自己的執行層</div></div>
+        <div class="logo-badge">H</div>
+      </div>
+      <div class="body">
+        <div class="pf-hero">
+          <div class="lb">總資產（模擬）</div>
+          <div class="tot" id="pfTotal">US$ 12,840.60</div>
+          <div class="chg up" id="pfPnl">▲ US$ 0.00　未實現損益</div>
+          <svg class="spark" viewBox="0 0 300 44" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#37c98b" stroke-width="2" points="0,34 30,30 60,33 90,24 120,27 150,18 180,22 210,14 240,17 270,9 300,12"/>
+            <polygon fill="rgba(55,201,139,.12)" points="0,34 30,30 60,33 90,24 120,27 150,18 180,22 210,14 240,17 270,9 300,12 300,44 0,44"/>
+          </svg>
+        </div>
+
+        <div class="sec-h"><h4>我的持倉</h4><span class="tiny">Hunch 立場已掛上</span></div>
+        <div class="card" id="pfHoldings" style="padding:4px 16px"></div>
+
+        <button class="order-cta buy" style="margin-top:4px" onclick="openOrder('MU')">＋ 下單交易</button>
+        <div class="exec-note">持倉與下單是<b style="color:var(--ink)">&nbsp;你自己的決定&nbsp;</b>。Hunch 只在旁邊描述狀態、掛上你存的立場，不替你買賣。</div>
+
+        <div id="orderHistWrap" style="display:none">
+          <div class="sec-h"><h4>近期委託</h4><span class="tiny">模擬 · 已存本機</span></div>
+          <div class="card" id="orderHistory" style="padding:4px 16px"></div>
+        </div>
+
+        <div class="sec-h"><h4>立場監控 Scanner</h4><span class="tiny">盯著你自己的假說</span></div>
+        <div class="card" id="scanList" style="padding:4px 16px"></div>
+        <button class="scan-sim" onclick="simulateWarning()">⚡ 模擬：某檔假說失敗（觸發警訊推播）</button>
+        <div class="exec-note" style="margin-top:12px">Scanner 只偵測<b style="color:var(--ink)">&nbsp;你當初標記的警訊&nbsp;</b>有沒有出現。它不會叫你賣——警訊出現時，浮現的是你自己寫的計畫。</div>
+      </div>
+    </section>
+
+    <!-- ===================== ORDER ===================== -->
+    <section class="screen" id="scr-order">
+      <div class="appbar">
+        <div class="agent-head">
+          <button class="backbtn" onclick="go('portfolio')" style="margin-right:2px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <div><div class="title" style="font-size:20px">下單</div><div class="sub">模擬委託</div></div>
+        </div>
+        <div class="logo-badge">H</div>
+      </div>
+      <div class="body">
+        <div class="sel-stock">
+          <div class="tick" id="oTick">MU</div>
+          <div class="mid"><b id="oName">美光 Micron</b><span id="oSub">MU · NASDAQ</span></div>
+          <div class="px"><div class="p" id="oPxTop">$120.30</div><div class="t">市價 · 即時</div></div>
+        </div>
+
+        <div class="seg">
+          <button id="segBuy" class="on-buy" onclick="setSide('buy')">買入</button>
+          <button id="segSell" onclick="setSide('sell')">賣出</button>
+        </div>
+
+        <div class="field">
+          <div class="fl">數量（股）</div>
+          <div class="box">
+            <button class="stepbtn" onclick="stepQty(-1)">−</button>
+            <input class="val" id="oQty" style="text-align:center;width:100%;color:var(--ink)" value="10" inputmode="numeric"
+              oninput="onQtyInput(this.value)">
+            <button class="stepbtn" onclick="stepQty(1)">＋</button>
+          </div>
+        </div>
+        <div class="qchips">
+          <button onclick="setQty(10)">10</button>
+          <button onclick="setQty(50)">50</button>
+          <button onclick="setQty(100)">100</button>
+          <button onclick="setQty(maxQty())">最大</button>
+        </div>
+
+        <div class="field">
+          <div class="fl">價格</div>
+          <div class="box"><div class="val" id="oPrice">$120.30</div><div class="unit">市價</div></div>
+        </div>
+
+        <div class="est"><span class="muted">預估金額</span><b id="oEst">US$ 1,203.00</b></div>
+        <div class="bal" id="oBal"><span>可用資金</span><span id="oBalVal">US$ 7,886.00</span></div>
+
+        <div class="hunch-banner">
+          <div class="hb-h"><span class="a-ic">H</span>Hunch 判斷狀態<span style="margin-left:auto;font-weight:600;color:var(--ink-3)">不是建議</span></div>
+          <div class="st" id="oChips"></div>
+          <div class="stance-q" id="oStanceWrap">你存的立場：<b id="oStance">「故事我信一半，但我是後手——我先等財報，不追。」</b></div>
+          <div class="runlink" onclick="startAgent(order.sym)">先跑一次判斷再決定 →</div>
+        </div>
+
+        <button class="order-cta buy" id="orderBtn" onclick="submitOrder()">買入 美光 · 10 股（模擬）</button>
+        <div class="order-boundary"><b>Hunch 不給買賣建議、不給進場價或倉位。</b><br>這筆委託是你自己的決定。</div>
+      </div>
+    </section>
+
+    <!-- ===================== MONITOR DETAIL ===================== -->
+    <section class="screen" id="scr-monitor">
+      <div class="appbar">
+        <div class="agent-head">
+          <button class="backbtn" onclick="go('portfolio')" style="margin-right:2px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <div><div class="title" style="font-size:20px" id="monName">立場監控</div><div class="sub" id="monSub">你的假說還成立嗎</div></div>
+        </div>
+        <div class="logo-badge">H</div>
+      </div>
+      <div class="body">
+        <div id="monBadge"></div>
+        <div class="mon-card">
+          <div class="lb"><span class="tag">B</span>你當初賭的關鍵假設</div>
+          <div class="bd" id="monHypo">—</div>
+        </div>
+        <div class="mon-card" id="monWarnCard">
+          <div class="lb"><span class="tag">C</span>你設的第一個警訊</div>
+          <div class="bd" id="monWarn">—</div>
+          <div class="sig" id="monSig">—</div>
+        </div>
+        <div class="mon-card">
+          <div class="lb">你的賣出計畫（if-then，你自己寫）</div>
+          <div class="bd" style="color:var(--ink-2);font-size:12.5px;margin-bottom:2px">如果警訊出現，我就……</div>
+          <textarea id="monPlan" rows="3" oninput="dirtyPlan=true"></textarea>
+          <div style="display:flex;justify-content:flex-end"><button class="scan-sim" style="width:auto;margin-top:8px;padding:8px 16px" onclick="savePlan()">儲存計畫</button></div>
+        </div>
+        <div class="sec-h"><h4>立場對照</h4><span class="tiny">你說的 vs 你做的</span></div>
+        <div class="mon-compare">
+          <div class="c"><div class="k">你當初的立場</div><div class="v" id="monStance">—</div></div>
+          <div class="c"><div class="k">你目前持有</div><div class="v" id="monPos">—</div></div>
+        </div>
+        <div class="mon-acts" style="margin-top:14px">
+          <button class="ghost" onclick="startAgent(monSym)">重看我的判斷</button>
+          <button class="fill" onclick="openOrder(monSym)">去調整持倉</button>
+        </div>
+        <div class="order-boundary" style="margin-top:14px"><b>Hunch 不會替你賣。</b><br>警訊只是狀態；計畫和最後的決定，都是你的。</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===================== TABBAR ===================== -->
+  <div class="tabbar">
+    <button class="tab on" data-tab="home" onclick="go('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5"/></svg><span>首頁</span>
+    </button>
+    <button class="tab" data-tab="portfolio" onclick="go('portfolio')">
+      <svg viewBox="0 0 24 24"><path d="M3 13h5v8H3zM10 3h5v18h-5zM17 9h5v12h-5z"/></svg><span>持倉</span>
+    </button>
+    <button class="tab center" data-tab="agent" onclick="startAgent()">
+      <span class="fab"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L4 21l1.1-3.7A8.4 8.4 0 1 1 21 11.5z"/></svg></span>
+      <span>Agent</span>
+    </button>
+    <button class="tab" data-tab="order" onclick="openOrder('MU')">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="2.4" fill="currentColor" stroke="none"/></svg><span>交易</span>
+    </button>
+    <button class="tab" data-tab="me" onclick="go('me')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>我</span>
+    </button>
+  </div>
+
+  <!-- ===================== CONFIRM SHEET ===================== -->
+  <div class="sheet-mask" id="sheetMask" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet">
+    <div class="grip"></div>
+    <div class="ok-ic">✓</div>
+    <h3 id="sheetTitle">模擬委託已送出</h3>
+    <div class="sub">這是 demo，不會真的成交或動用資金。</div>
+    <div class="recpt" id="sheetRecpt"></div>
+    <div class="btns">
+      <button class="ghost" onclick="closeSheet()">完成</button>
+      <button class="fill" onclick="closeSheet();go('portfolio')">查看持倉</button>
+    </div>
+  </div>
+
+  <!-- ===================== TOAST ===================== -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ===================== PUSH NOTIFICATION ===================== -->
+  <div class="push" id="push" onclick="openPush()">
+    <div class="p-ic">⚠</div>
+    <div class="p-bd">
+      <div class="p-h">Hunch · <b>立場監控</b><span style="margin-left:auto" id="pushTime">現在</span></div>
+      <div class="p-t" id="pushTitle">你當初的警訊出現了</div>
+      <div class="p-x" id="pushBody">點開看你當初寫的賣出計畫。</div>
+    </div>
+  </div>
+
+  <!-- ===================== ONBOARDING ===================== -->
+  <div class="onboard hide" id="onboard">
+    <div class="ob-top">
+      <div class="ob-logo">H</div>
+      <h2>幫你<em>判斷</em>，<br>不幫你下單。</h2>
+      <div class="ob-sub">看到創作者的股票想法會心動？Hunch 陪你 5 分鐘想清楚，再交給你決定。</div>
+      <div class="ob-pt"><span class="n">1</span><span><b>看懂 → 判斷</b>：把一段內容拆成論點、假設、下行風險、你是不是接後手。</span></div>
+      <div class="ob-pt"><span class="n">2</span><span><b>立場是你的</b>：最後一句判斷永遠由你自己寫，存進你的判斷庫。</span></div>
+      <div class="ob-pt"><span class="n">3</span><span><b>永不下指令</b>：Hunch 只描述狀態，不給買賣建議、進場價或倉位。</span></div>
+    </div>
+    <button class="ob-cta" onclick="closeOnboard(true)">開始 →</button>
+    <button class="ob-skip" onclick="closeOnboard(false)">略過介紹</button>
+  </div>
+</div>
+
+<script>
+/* ---------------- navigation ---------------- */
+function go(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active','back'));
+  const el = document.getElementById('scr-'+name);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  const map={home:'home',portfolio:'portfolio',order:'order',me:'me',agent:'agent'};
+  const tab=[...document.querySelectorAll('.tab')].find(t=>t.dataset.tab===map[name]);
+  if(tab) tab.classList.add('on');
+}
+
+/* ---------------- persistent store (localStorage) ---------------- */
+const LS_KEY='hunchit_demo_v1';
+function loadStore(){try{return JSON.parse(localStorage.getItem(LS_KEY))||{}}catch(e){return {}}}
+function saveStore(){try{localStorage.setItem(LS_KEY,JSON.stringify(store))}catch(e){}}
+let store=loadStore();
+store.judgments=store.judgments||[];   // {sym,name,tick,stance,c,d,principle,ts}
+store.orders=store.orders||[];         // {sym,name,tick,side,qty,price,ts}
+store.principles=store.principles||[]; // {text,from,ts}
+// live holdings — seeded once, then mutated by real orders
+if(!store.holdings){
+  store.holdings={cash:7886, positions:{
+    MU:{shares:20,avg:107.1}, NVDA:{shares:8,avg:162.4}, ARM:{shares:10,avg:120.5}
+  }};
+}
+function cash(){return store.holdings.cash;}
+function heldShares(sym){const p=store.holdings.positions[sym];return p?p.shares:0;}
+// stance monitor — each holding's hypothesis (B) + first warning (C) + user's own exit plan
+if(!store.watch){
+  store.watch={
+    MU:{hypothesis:'AI 對 HBM 的需求，強到足以撐起「多年」的漲價循環（不只一兩季旺季）。',
+        warning:'記憶體現貨報價或美光財測轉弱、雲端大廠下修 AI 資本支出。',
+        plan:'先等財報；如果財報確認需求放緩，我就減碼、不追高。', status:'holding', triggeredAt:null},
+    NVDA:{hypothesis:'AI 算力需求持續擴張，撐得起目前的估值。',
+        warning:'雲端資本支出見頂、或公司財測下修。',
+        plan:'敘事過熱、我是後手，先不加碼；跌破成本我再重看。', status:'holding', triggeredAt:null},
+    ARM:{hypothesis:'授權模式的護城河穩固，能支撐溢價估值。',
+        warning:'授權金成長趨緩、或大客戶轉向自研替代。',
+        plan:'估值我看不懂，先等財報；成長一轉弱就出場。', status:'holding', triggeredAt:null}
+  };
+}
+
+function now(){return new Date().getTime();}
+// seed a little judgment history once, so the style profile has data immediately
+function seedHistory(){
+  const D=86400000, t=now();
+  return {
+    judgments:[
+      {sym:'MU',name:'美光 Micron',tick:'MU',stance:'故事我信一半，但我是後手——我先等財報，不追。',plan:'先等財報；需求放緩就減碼。',c:'看情況，我會重新評估',d:'心動 → 但先等',principle:'',ts:t-2*D},
+      {sym:'NVDA',name:'輝達 Nvidia',tick:'NVDA',stance:'算力我信，但敘事過熱、我是後手，還是想小買一點。',plan:'跌破成本重看。',c:'會，我理解風險仍想參與',d:'心動 → 還是想買',principle:'',ts:t-5*D},
+      {sym:'ARM',name:'ARM Holdings',tick:'ARM',stance:'我相信授權護城河，但估值看不懂，先等財報再決定。',plan:'成長一轉弱就出場。',c:'看情況，我會重新評估',d:'心動 → 但先等',principle:'',ts:t-8*D},
+      {sym:'PLTR',name:'Palantir',tick:'PL',stance:'故事很好，但注意力已爆表、我是明顯後手，這次我放掉。',plan:'不追。',c:'不會，那我就出場',d:'沒變 → 放掉',principle:'',ts:t-12*D}
+    ],
+    principles:[{text:'「有說服力」和「有證據」是兩回事——先把情緒敘事跟可驗證事實分開，再決定要不要動。',from:'影音平台跟單虧損',ts:t-12*D}]
+  };
+}
+if(!store.seeded){
+  store.seeded=1;
+  if(store.judgments.length===0){ const h=seedHistory(); store.judgments=h.judgments; store.principles=h.principles; }
+  saveStore();
+}
+function ago(ts){const d=(now()-ts)/1000;
+  if(d<60)return '剛剛';
+  if(d<3600)return Math.floor(d/60)+' 分鐘前';
+  if(d<86400)return Math.floor(d/3600)+' 小時前';
+  return Math.floor(d/86400)+' 天前';}
+
+/* ---------------- stock model + judgment state ---------------- */
+const STOCKS={
+  MU:{tick:'MU',name:'美光 Micron',ex:'MU · NASDAQ',price:120.30,hint:'你偏後手 · 先等財報',
+    chips:[['注意力','高'],['相對價格','落後'],['你大概','後手']],
+    stance:'故事我信一半，但我是後手——我先等財報，不追。'},
+  NVDA:{tick:'NVDA',name:'輝達 Nvidia',ex:'NVDA · NASDAQ',price:171.00,hint:'敘事過熱',
+    chips:[['注意力','極高'],['敘事','過熱'],['你大概','後手']],
+    stance:'算力需求我信，但敘事過熱、我是後手，先等回檔再說。'},
+  ARM:{tick:'ARM',name:'ARM Holdings',ex:'ARM · NASDAQ',price:118.00,hint:'先等',
+    chips:[['注意力','中'],['估值','偏貴'],['論點','看不懂']],
+    stance:'我相信授權模式護城河，但估值看不懂，先等財報再決定。'},
+  TSLA:{tick:'TSLA',name:'特斯拉 Tesla',ex:'TSLA · NASDAQ',price:340.00,hint:'你已放掉',
+    chips:[['注意力','高'],['敘事','Robotaxi'],['你已','放掉']],
+    stance:'故事很好，但注意力已爆表、我是明顯後手，這次我放掉。'}
+};
+function latestJudgment(sym){return store.judgments.find(j=>j.sym===sym);}
+
+/* ---------------- order / trade ---------------- */
+const order={side:'buy',qty:10,price:120.30,name:'美光',sym:'MU'};
+function fmt(n){return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function openOrder(sym){
+  const s=STOCKS[sym]; if(!s) return;
+  order.sym=sym; order.price=s.price; order.qty=10;
+  order.name=s.name.split(' ')[0];
+  document.getElementById('oTick').textContent=s.tick;
+  document.getElementById('oName').textContent=s.name;
+  document.getElementById('oSub').textContent=s.ex;
+  document.getElementById('oPxTop').textContent='$'+fmt(s.price);
+  document.getElementById('oPrice').textContent='$'+fmt(s.price);
+  document.getElementById('oChips').innerHTML=s.chips.map(c=>`<span class="chip">${c[0]} <b>${c[1]}</b></span>`).join('');
+  const saved=latestJudgment(sym);
+  const stance=saved?saved.stance:s.stance;
+  document.getElementById('oStanceWrap').innerHTML=
+    (saved?'你存的立場':'目前狀態立場')+'：<b>「'+stance+'」</b>';
+  setSide('buy');
+  go('order');
+}
+function maxQty(){
+  return order.side==='buy' ? Math.max(0,Math.floor(cash()/order.price)) : heldShares(order.sym);
+}
+function updateOrderUI(syncInput){
+  const qi=document.getElementById('oQty');
+  if(syncInput && qi && qi.value!=String(order.qty)) qi.value=order.qty;
+  const buy=order.side==='buy';
+  const est=order.qty*order.price;
+  const held=heldShares(order.sym);
+  const over = buy ? est>cash() : order.qty>held;
+  document.getElementById('oEst').textContent='US$ '+fmt(est);
+  const bal=document.getElementById('oBal');
+  bal.className='bal'+(over?' over':'');
+  if(buy){
+    bal.querySelector('span').textContent=over?'⚠ 資金不足':'可用資金';
+    document.getElementById('oBalVal').textContent=over?('超出 US$ '+fmt(est-cash())):('US$ '+fmt(cash()));
+  }else{
+    bal.querySelector('span').textContent=over?'⚠ 持股不足':'可賣股數';
+    document.getElementById('oBalVal').textContent=(over?'僅有 ':'')+held+' 股';
+  }
+  const btn=document.getElementById('orderBtn');
+  btn.className='order-cta '+(buy?'buy':'sell');
+  btn.disabled=over || order.qty<1;
+  btn.textContent = over ? (buy?'資金不足':'持股不足')
+    : ((buy?'買入':'賣出')+' '+order.name+' · '+order.qty+' 股（模擬）');
+}
+function orderRender(){ updateOrderUI(true); }
+function setSide(s){
+  order.side=s;
+  document.getElementById('segBuy').className=s==='buy'?'on-buy':'';
+  document.getElementById('segSell').className=s==='sell'?'on-sell':'';
+  orderRender();
+}
+function stepQty(d){order.qty=Math.max(1,order.qty+d);orderRender();}
+function setQty(n){order.qty=Math.max(1,Math.floor(n));orderRender();}
+function onQtyInput(v){const n=parseInt((v||'').replace(/\D/g,''),10);order.qty=isNaN(n)||n<1?1:n;updateOrderUI(false);}
+
+/* actually execute the trade against holdings */
+function executeTrade(){
+  const h=store.holdings, sym=order.sym, s=STOCKS[sym], qty=order.qty, px=order.price;
+  let pos=h.positions[sym];
+  if(order.side==='buy'){
+    const cost=qty*px;
+    if(pos){ pos.avg=(pos.shares*pos.avg+cost)/(pos.shares+qty); pos.shares+=qty; }
+    else   { h.positions[sym]={shares:qty,avg:px}; }
+    h.cash-=cost;
+  }else{
+    if(!pos) return;
+    pos.shares-=qty; h.cash+=qty*px;
+    if(pos.shares<=0) delete h.positions[sym];
+  }
+}
+
+function submitOrder(){
+  const buy=order.side==='buy';
+  if(buy && order.qty*order.price>cash()){ toast('資金不足，調整數量再送出'); return; }
+  if(!buy && order.qty>heldShares(order.sym)){ toast('持股不足，無法賣出這麼多'); return; }
+  const s=STOCKS[order.sym];
+  const saved=latestJudgment(order.sym);
+  const stanceShort=(saved?saved.stance:s.stance);
+  executeTrade();   // <-- mutate holdings for real
+  store.orders.unshift({sym:order.sym,name:s.name,tick:s.tick,side:order.side,qty:order.qty,price:order.price,ts:now()});
+  saveStore(); renderOrders(); renderPortfolio(); renderStyle();
+  document.getElementById('sheetTitle').textContent='模擬'+(buy?'買入':'賣出')+'委託已成交';
+  document.getElementById('sheetRecpt').innerHTML=`
+    <div class="r"><span>方向</span><b style="color:${buy?'var(--ok)':'var(--emotion)'}">${buy?'買入 Buy':'賣出 Sell'}</b></div>
+    <div class="r"><span>標的</span><b>${s.name} ${s.tick}</b></div>
+    <div class="r"><span>數量</span><b>${order.qty} 股</b></div>
+    <div class="r"><span>價格</span><b>市價 $${fmt(order.price)}</b></div>
+    <div class="r"><span>預估金額</span><b>US$ ${fmt(order.qty*order.price)}</b></div>
+    <div class="r"><span>你的立場</span><b style="color:var(--accent)">${stanceShort}</b></div>`;
+  document.getElementById('sheetMask').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+  toast('已送出模擬委託 · 已存本機');
+}
+function closeSheet(){
+  document.getElementById('sheetMask').classList.remove('show');
+  document.getElementById('sheet').classList.remove('show');
+}
+
+/* ---------------- render persisted data ---------------- */
+function renderLibrary(){
+  const pl=document.getElementById('princ-live');
+  if(pl) pl.innerHTML=store.principles.map(p=>`
+    <div class="princ" style="border-color:var(--ok)">
+      <div class="q">下次看到類似想法，先問</div>
+      <div class="p">${p.text}</div>
+      <div class="nxt">來自案例：<b>${p.from}</b> · ${ago(p.ts)} <span style="color:var(--ok);font-weight:700">· 新</span></div>
+    </div>`).join('');
+  const jr=document.getElementById('jrecords-live');
+  if(jr) jr.innerHTML=store.judgments.map(j=>`
+    <div class="jcard" style="border-color:var(--ok)">
+      <div class="top"><div class="tick">${j.tick||j.sym}</div><b>${j.name}</b><span class="date">${ago(j.ts)}</span></div>
+      <div class="stance"><span class="lb">我目前的立場</span>${j.stance}</div>
+      <div class="foot"><span class="pill"><span class="dot" style="background:var(--warn)"></span>${j.d||'已判斷'}</span><span class="pill"><span class="dot" style="background:var(--ok)"></span>已存立場</span></div>
+    </div>`).join('');
+  const lc=document.getElementById('libCount');
+  if(lc) lc.textContent=store.principles.length+' 個原則 · '+store.judgments.length+' 筆判斷';
+  renderStyle();
+}
+
+/* ---------------- judgment style (candidate I) ---------------- */
+function computeStyle(){
+  const J=store.judgments, O=store.orders, W=store.watch||{}, H=store.holdings;
+  const tend={buy:0,wait:0,pass:0};
+  J.forEach(j=>{ if(!j.d)return;
+    if(j.d.includes('還是想買'))tend.buy++;
+    else if(j.d.includes('先等'))tend.wait++;
+    else if(j.d.includes('放掉'))tend.pass++; });
+  // said cautious (先等/放掉) but later placed a BUY on the same stock
+  let cautious=0, boughtAnyway=0;
+  J.forEach(j=>{ const c=j.d&&(j.d.includes('先等')||j.d.includes('放掉')); if(!c)return; cautious++;
+    if(O.some(o=>o.sym===j.sym&&o.side==='buy'&&o.ts>=j.ts))boughtAnyway++; });
+  // hold a stock whose latest judgment was cautious → 說的和做的沒對上
+  const conflict=[];
+  Object.keys(H.positions).forEach(sym=>{ const j=J.find(x=>x.sym===sym);
+    if(j&&j.d&&(j.d.includes('先等')||j.d.includes('放掉'))) conflict.push(STOCKS[sym]?STOCKS[sym].name:sym); });
+  // warning discipline
+  const trig=Object.keys(W).filter(s=>W[s].status==='triggered');
+  let followed=0; trig.forEach(s=>{ const t=W[s].triggeredAt;
+    if(O.some(o=>o.sym===s&&o.side==='sell'&&o.ts>=t))followed++; });
+  return {n:J.length, tend, cautious, boughtAnyway, conflict, trig:trig.length, followed, orders:O.length, principles:store.principles.length};
+}
+function renderStyle(){
+  // profile stats
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('stJudge',store.judgments.length); set('stPrinc',store.principles.length); set('stOrder',store.orders.length);
+  const box=document.getElementById('styleBox'); if(!box) return;
+  const s=computeStyle();
+  if(s.n===0){ box.innerHTML='<div class="style-card"><div class="style-fp">再完成幾次判斷，這裡會長出<b>你的判斷指紋</b>——你偏向等還是追、說的和做的有沒有對上。</div></div>'; return; }
+  const tot=s.tend.buy+s.tend.wait+s.tend.pass||1, pct=x=>Math.round(x/tot*100);
+  const domName=[['先等',s.tend.wait,'accent'],['放掉',s.tend.pass,'ok'],['還是想買',s.tend.buy,'warn']].sort((a,b)=>b[1]-a[1])[0][0];
+  const seg=(c,v)=>v>0?`<i style="width:${pct(v)}%;background:${c}"></i>`:'';
+  let mirrors='';
+  // said vs held
+  if(s.conflict.length){
+    mirrors+=`<div class="mirror"><div class="mi warn">⚠</div><div class="mt"><span class="big warn">${s.conflict.length} 檔</span>&nbsp;你判斷「先等 / 放掉」的股票，其實還<b>持有中</b>（${s.conflict.join('、')}）——說的和做的還沒對上。</div></div>`;
+  }else{
+    mirrors+=`<div class="mirror"><div class="mi ok">✓</div><div class="mt">你目前的持倉都和判斷<b>一致</b>。</div></div>`;
+  }
+  // cautious but bought
+  if(s.cautious>0){
+    const warnCls=s.boughtAnyway>0?'warn':'ok';
+    mirrors+=`<div class="mirror"><div class="mi ${warnCls}">${s.boughtAnyway>0?'↩':'✓'}</div><div class="mt">你 <b>${s.cautious}</b> 次傾向先等 / 放掉，其中 <span class="big ${warnCls}">${s.boughtAnyway}</span> 次事後仍下了<b>買單</b>。</div></div>`;
+  }
+  // warning discipline
+  if(s.trig>0){
+    mirrors+=`<div class="mirror"><div class="mi ${s.followed>=s.trig?'ok':'warn'}">🛎</div><div class="mt">假說警訊觸發 <b>${s.trig}</b> 次，你在警訊後採取動作 <span class="big ${s.followed>=s.trig?'ok':'warn'}">${s.followed}</span> 次。</div></div>`;
+  }else{
+    mirrors+=`<div class="mirror"><div class="mi neu">🛎</div><div class="mt">目前尚無假說警訊觸發——Scanner 監控中。</div></div>`;
+  }
+  box.innerHTML=`
+  <div class="style-card">
+    <div class="style-fp">你的判斷指紋：面對創作者想法，你最常選擇 <b>${domName}</b>。這是根據你 ${s.n} 次判斷 + ${s.orders} 筆委託算出來的。</div>
+    <div class="tend-bar">${seg('#5b8def',s.tend.wait)}${seg('#37c98b',s.tend.pass)}${seg('#e6a93a',s.tend.buy)}</div>
+    <div class="tend-leg">
+      <span><span class="d" style="background:#5b8def"></span>先等 ${s.tend.wait}（${pct(s.tend.wait)}%）</span>
+      <span><span class="d" style="background:#37c98b"></span>放掉 ${s.tend.pass}（${pct(s.tend.pass)}%）</span>
+      <span><span class="d" style="background:#e6a93a"></span>還是想買 ${s.tend.buy}（${pct(s.tend.buy)}%）</span>
+    </div>
+    ${mirrors}
+    <div class="style-foot">這是你判斷 ${s.n} 次後的初步畫像，資料越多越準。Hunch 只反映你的模式，不評判你的決定。</div>
+  </div>`;
+}
+function renderOrders(){
+  const wrap=document.getElementById('orderHistWrap');
+  const oh=document.getElementById('orderHistory');
+  if(!wrap||!oh) return;
+  if(!store.orders.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  oh.innerHTML=store.orders.map(o=>`
+    <div class="hold">
+      <div class="tick" style="background:${o.side==='buy'?'rgba(55,201,139,.14)':'rgba(240,103,143,.14)'};color:${o.side==='buy'?'var(--ok)':'var(--emotion)'}">${o.side==='buy'?'買':'賣'}</div>
+      <div class="mid"><b>${o.name}</b><span class="sh">${o.side==='buy'?'買入':'賣出'} ${o.qty} 股 · $${fmt(o.price)} · ${ago(o.ts)}</span></div>
+      <div class="rt"><div class="mv">US$ ${fmt(o.qty*o.price)}</div><div class="pnl" style="color:var(--ink-3)">模擬</div></div>
+    </div>`).join('');
+}
+function renderPortfolio(){
+  const box=document.getElementById('pfHoldings'); if(!box) return;
+  const h=store.holdings; let mvSum=0, costSum=0, rows='';
+  Object.keys(h.positions).forEach(sym=>{
+    const p=h.positions[sym], s=STOCKS[sym]||{tick:sym,name:sym,price:p.avg,hint:''};
+    const px=s.price, mv=p.shares*px, cost=p.shares*p.avg, pnl=p.avg>0?((px-p.avg)/p.avg*100):0, up=pnl>=0;
+    mvSum+=mv; costSum+=cost;
+    rows+=`<div class="hold clk" onclick="openOrder('${sym}')">
+      <div class="tick">${s.tick}</div>
+      <div class="mid"><b>${s.name}</b><span class="sh">${p.shares} 股 · 均價 $${fmt(p.avg)}</span>${s.hint?`<span class="hh"><span class="a-ic">H</span>${s.hint}</span>`:''}</div>
+      <div class="rt"><div class="mv">$${fmt(mv)}</div><div class="pnl ${up?'up':'down'}">${up?'+':'−'}${fmt(Math.abs(pnl))}%</div></div>
+    </div>`;
+  });
+  rows+=`<div class="hold">
+    <div class="tick" style="background:rgba(55,201,139,.12);color:var(--ok)">$</div>
+    <div class="mid"><b>現金</b><span class="sh">可用餘額</span></div>
+    <div class="rt"><div class="mv">$${fmt(h.cash)}</div><div class="pnl" style="color:var(--ink-3)">—</div></div>
+  </div>`;
+  box.innerHTML=rows;
+  const total=h.cash+mvSum, pnlAbs=mvSum-costSum, up=pnlAbs>=0;
+  document.getElementById('pfTotal').textContent='US$ '+fmt(total);
+  const pe=document.getElementById('pfPnl');
+  pe.className='chg '+(up?'up':'down');
+  pe.textContent=(up?'▲ US$ ':'▼ US$ ')+fmt(Math.abs(pnlAbs))+'　未實現損益';
+}
+
+/* ---------------- stance monitor / scanner ---------------- */
+let monSym='MU', dirtyPlan=false, pushSym=null, pushTimer=null;
+function renderScanner(){
+  const box=document.getElementById('scanList'); if(!box) return;
+  const syms=Object.keys(store.holdings.positions).filter(s=>store.watch[s]);
+  if(!syms.length){box.innerHTML='<div style="padding:14px 4px;color:var(--ink-3);font-size:13px">目前沒有可監控的持倉</div>';return;}
+  box.innerHTML=syms.map(sym=>{
+    const w=store.watch[sym], s=STOCKS[sym]||{name:sym}, trig=w.status==='triggered';
+    return `<div class="scan-row" onclick="openMonitor('${sym}')">
+      <span class="st-dot ${trig?'trig':'hold'}"></span>
+      <div class="mid"><b>${s.name}</b><span>假說：${w.hypothesis}</span></div>
+      <span class="stat ${trig?'trig':'hold'}">${trig?'⚠ 警訊出現':'立場成立中'}</span>
+    </div>`;
+  }).join('');
+}
+function openMonitor(sym){
+  if(!store.watch[sym]) return;
+  monSym=sym; dirtyPlan=false;
+  const w=store.watch[sym], s=STOCKS[sym]||{name:sym,stance:''}, trig=w.status==='triggered';
+  document.getElementById('monName').textContent=s.name;
+  document.getElementById('monSub').textContent=trig?'警訊已出現':'你的假說還成立嗎';
+  document.getElementById('monBadge').innerHTML=`<span class="mon-badge ${trig?'trig':'hold'}">${trig?'⚠ 警訊出現 · 你的計畫在下面':'● 立場成立中'}</span>`;
+  document.getElementById('monHypo').textContent=w.hypothesis;
+  document.getElementById('monWarn').textContent=w.warning;
+  document.getElementById('monWarnCard').className='mon-card'+(trig?' warn':'');
+  const sig=document.getElementById('monSig');
+  sig.className='sig '+(trig?'on':'off');
+  sig.textContent=trig?('⚠ 已出現 · '+ago(w.triggeredAt)):'○ 尚未出現，持續監控中';
+  document.getElementById('monPlan').value=w.plan;
+  const saved=latestJudgment(sym);
+  document.getElementById('monStance').textContent=saved?saved.stance:(s.stance||'—');
+  const pos=store.holdings.positions[sym];
+  document.getElementById('monPos').textContent=pos?(pos.shares+' 股 · 均價 $'+fmt(pos.avg)):'未持有';
+  go('monitor');
+}
+function savePlan(){
+  const v=document.getElementById('monPlan').value.trim();
+  if(v) store.watch[monSym].plan=v;
+  dirtyPlan=false; saveStore(); toast('計畫已存 · 這是你自己的計畫');
+}
+function simulateWarning(){
+  const syms=Object.keys(store.holdings.positions).filter(s=>store.watch[s] && store.watch[s].status!=='triggered');
+  if(!syms.length){ toast('目前假說都還成立，沒有可觸發的警訊'); return; }
+  triggerWarning(syms.includes('MU')?'MU':syms[0]);
+}
+function triggerWarning(sym){
+  const w=store.watch[sym]; w.status='triggered'; w.triggeredAt=now();
+  saveStore(); renderScanner(); renderStyle();
+  showPush(sym);
+}
+function showPush(sym){
+  pushSym=sym; const w=store.watch[sym], s=STOCKS[sym]||{name:sym,tick:sym};
+  document.getElementById('pushTitle').textContent=`${s.name} ${s.tick}：你當初的警訊出現了`;
+  document.getElementById('pushBody').textContent=w.warning+' — 點開看你自己寫的賣出計畫。';
+  const p=document.getElementById('push'); p.classList.add('show');
+  if(pushTimer) clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>p.classList.remove('show'), 6500);
+}
+function openPush(){ document.getElementById('push').classList.remove('show'); if(pushSym) openMonitor(pushSym); }
+
+function saveJudgment(){
+  if(state.saved) return; state.saved=true;
+  const principleText='「這個故事，我是第幾手聽到的？」——敘事已傳開、股價已反映時，我承擔的是接後手的風險，不是資訊優勢。';
+  const ts=now();
+  const plan=state.plan||planDefault(state.C);
+  store.judgments.unshift({sym:'MU',name:'美光 Micron',tick:'MU',stance:state.stance,plan:plan,c:state.C,d:state.D,principle:principleText,ts});
+  store.principles.unshift({text:principleText,from:'美光 HBM 超級循環',ts});
+  if(STOCKS.MU) STOCKS.MU.stance=state.stance;
+  // link this judgment into the scanner: your own if-then exit plan is what Scanner surfaces
+  if(store.watch.MU){
+    if(plan) store.watch.MU.plan=plan;
+    store.watch.MU.status='holding'; store.watch.MU.triggeredAt=null;  // fresh judgment resets the watch
+  }
+  saveStore(); renderLibrary(); renderScanner();
+}
+function clearDemo(){
+  const h=seedHistory();
+  store.judgments=h.judgments; store.principles=h.principles; store.orders=[];
+  store.holdings={cash:7886, positions:{MU:{shares:20,avg:107.1},NVDA:{shares:8,avg:162.4},ARM:{shares:10,avg:120.5}}};
+  store.watch={
+    MU:{hypothesis:'AI 對 HBM 的需求，強到足以撐起「多年」的漲價循環（不只一兩季旺季）。',warning:'記憶體現貨報價或美光財測轉弱、雲端大廠下修 AI 資本支出。',plan:'先等財報；如果財報確認需求放緩，我就減碼、不追高。',status:'holding',triggeredAt:null},
+    NVDA:{hypothesis:'AI 算力需求持續擴張，撐得起目前的估值。',warning:'雲端資本支出見頂、或公司財測下修。',plan:'敘事過熱、我是後手，先不加碼；跌破成本我再重看。',status:'holding',triggeredAt:null},
+    ARM:{hypothesis:'授權模式的護城河穩固，能支撐溢價估值。',warning:'授權金成長趨緩、或大客戶轉向自研替代。',plan:'估值我看不懂，先等財報；成長一轉弱就出場。',status:'holding',triggeredAt:null}
+  };
+  saveStore(); renderLibrary(); renderOrders(); renderPortfolio(); renderScanner();
+  document.getElementById('push').classList.remove('show');
+  toast('已重置 demo 資料');
+}
+
+/* ---------------- toast / toggles / theme / onboarding ---------------- */
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast'); if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
+}
+function toggleSwitch(row,label){
+  const tg=row.querySelector('.toggle'); const on=!tg.classList.contains('off');
+  tg.classList.toggle('off', on);              // was on → turn off
+  toast(label+'：'+(on?'關':'開'));
+}
+function applyTheme(light){
+  document.body.classList.toggle('light', light);
+  const tg=document.getElementById('themeToggle'); if(tg) tg.classList.toggle('off', !light);
+  try{localStorage.setItem('hunchit_theme', light?'light':'dark');}catch(e){}
+}
+function toggleTheme(row){ applyTheme(!document.body.classList.contains('light')); }
+function closeOnboard(start){
+  document.getElementById('onboard').classList.add('hide');
+  try{localStorage.setItem('hunchit_onboarded','1');}catch(e){}
+  if(start) startAgent();
+}
+
+/* hydrate persisted data + preferences on load */
+renderLibrary(); renderOrders(); renderPortfolio(); renderScanner();
+(function init(){
+  let theme='dark'; try{theme=localStorage.getItem('hunchit_theme')||'dark';}catch(e){}
+  if(theme==='light') applyTheme(true);
+  let seen='1'; try{seen=localStorage.getItem('hunchit_onboarded');}catch(e){}
+  if(!seen) document.getElementById('onboard').classList.remove('hide');
+  setInterval(()=>{ renderLibrary(); renderOrders(); }, 30000);  // keep relative times fresh
+  // if a warning was already triggered in a previous session, re-surface the push once
+  const trig=Object.keys(store.watch||{}).find(s=>store.watch[s].status==='triggered' && store.holdings.positions[s]);
+  if(trig) setTimeout(()=>showPush(trig), 900);
+})();
+
+/* ---------------- agent chat engine ---------------- */
+const chat = document.getElementById('chat');
+const state = {C:null, D:null, stance:'', plan:'', running:false, saved:false};
+
+function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
+function scrollDown(){requestAnimationFrame(()=>chat.scrollTop=chat.scrollHeight);}
+
+function addUser(text){
+  chat.appendChild(el(`<div class="msg user"><div class="bubble">${text}</div></div>`));
+  scrollDown();
+}
+function addAgentRaw(node){
+  const wrap=el(`<div class="msg agent"><div class="who"><span class="a-ic">H</span>Hunch</div></div>`);
+  wrap.appendChild(node);
+  chat.appendChild(wrap);scrollDown();
+}
+function agentText(text){addAgentRaw(el(`<div class="bubble">${text}</div>`));}
+
+const STEP_ORDER=['A','B','C','D','F'];
+function setStep(letter){
+  const idx=STEP_ORDER.indexOf(letter);
+  document.querySelectorAll('#flowSteps span').forEach(s=>{
+    const i=STEP_ORDER.indexOf(s.dataset.s);
+    s.classList.toggle('active', s.dataset.s===letter);
+    s.classList.toggle('done', i<idx);
+  });
+}
+function typing(){
+  const t=el(`<div class="msg agent" id="typing"><div class="bubble" style="padding:0"><div class="typing"><span></span><span></span><span></span></div></div></div>`);
+  chat.appendChild(t);scrollDown();return t;
+}
+function removeTyping(){const t=document.getElementById('typing');if(t)t.remove();}
+
+/* run a scripted queue of beats */
+let queue=[];
+let pending=null;      // {finish, timer} — an in-flight typing delay that can be skipped
+let pendingSuggest=null; // the current paste-suggestion node (composer can fulfill it)
+function schedule(delay, done){
+  let fired=false;
+  const finish=()=>{ if(fired)return; fired=true; pending=null; done(); };
+  const timer=setTimeout(finish, delay);
+  pending={finish, timer};
+}
+function skipPending(){ if(pending){ clearTimeout(pending.timer); pending.finish(); } }
+function run(){
+  if(!queue.length)return;
+  const beat=queue.shift();
+  if(beat.type==='agentText'){
+    typing();
+    schedule(beat.delay||750, ()=>{removeTyping();agentText(beat.text);run();});
+  }else if(beat.type==='agentCard'){
+    typing();
+    schedule(beat.delay||900, ()=>{removeTyping();addAgentRaw(el(beat.html));if(beat.step)setStep(beat.step);run();});
+  }else if(beat.type==='suggest'){
+    const g=el(`<div class="gate"><button class="suggest"><b>${beat.hint||'點一下模擬貼上'}</b>${beat.preview}</button></div>`);
+    pendingSuggest=g;
+    g.querySelector('button').onclick=()=>{g.remove();pendingSuggest=null;addUser(beat.send);run();};
+    chat.appendChild(g);scrollDown();
+  }else if(beat.type==='gate'){
+    const g=el(`<div class="gate"><button class="cta">${beat.label}</button></div>`);
+    g.querySelector('button').onclick=()=>{g.remove();if(beat.userEcho)addUser(beat.userEcho);run();};
+    chat.appendChild(g);scrollDown();
+  }else if(beat.type==='choice'){
+    const c=el(`<div class="choices"></div>`);
+    beat.options.forEach(o=>{
+      const b=el(`<div class="choice">${o.label}</div>`);
+      b.onclick=()=>{c.remove();state[beat.key]=o.label;addUser(o.label);if(o.reply)queue.unshift({type:'agentText',text:o.reply});if(beat.after)beat.after(o);run();};
+      c.appendChild(b);
+    });
+    chat.appendChild(c);scrollDown();
+  }else if(beat.type==='draft'){
+    renderDraft();
+  }else if(beat.type==='exitplan'){
+    renderExitPlan(beat.warning);
+  }else if(beat.type==='fn'){
+    beat.fn();run();
+  }
+}
+
+/* one-off agent line that does NOT touch the scripted queue */
+function agentSay(text){ typing(); setTimeout(()=>{removeTyping();agentText(text);}, 550); }
+
+/* real composer: type your own content */
+function compSend(){
+  const inp=document.getElementById('compInput');
+  const v=(inp.value||'').trim(); if(!v) return;
+  inp.value=''; document.getElementById('compSend').disabled=true;
+  if(!state.running){ startAgent(); }
+  if(pendingSuggest){                 // we're at the paste stage → use their text to continue
+    pendingSuggest.remove(); pendingSuggest=null;
+    addUser(v); run(); return;
+  }
+  addUser(v);                         // otherwise: acknowledge without derailing the demo
+  agentSay('收到你的補充 🙌 這個 demo 走的是美光示範，完整拆解都在下面的卡片，點按鈕或選項繼續就好 👇');
+}
+
+/* ---- the A → C → D → F script ---- */
+function buildScript(){
+  return [
+   {type:'agentText',text:'嗨 Sandy 👋 我是 Hunch。把一段你看到、有點心動的創作者內容貼給我——連結、截圖或直接轉述都行。'},
+   {type:'agentText',text:'我不會叫你買或不買，只幫你把它看清楚。',delay:600},
+   {type:'suggest',hint:'點一下模擬貼上一段 KOL 內容',
+     preview:'「美光（MU）這波真的不一樣！AI 對 HBM 的需求爆炸，十年一遇的超級循環，我已加碼，還沒上車的要把握，輕鬆翻倍，錯過就沒下一班車了。」',
+     send:'美光（MU）這波真的不一樣！AI 對 HBM 記憶體的需求爆炸，十年一遇的超級循環，我已加碼，還沒上車的要把握，輕鬆翻倍，錯過就沒下一班車了。'},
+   {type:'agentText',text:'收到。先不看它對不對，我幫你翻譯成「它到底要你相信什麼」👇',delay:700},
+   {type:'agentCard',delay:1100,html:cardA(),step:'A'},
+   {type:'agentText',text:'看到了嗎？有說服力 ≠ 有證據。「錯過就沒了」是情緒，不是理由。',delay:900},
+
+   {type:'gate',label:'繼續 → 最需要成立的是什麼？',userEcho:'那這筆最關鍵的假設是什麼？'},
+   {type:'agentText',text:'不用查所有事。我只抓「最可能讓這筆交易錯掉、而且 5 分鐘查得動」的那一件。',delay:750},
+   {type:'agentCard',delay:1100,html:cardB(),step:'B'},
+   {type:'agentText',text:'先查這一件，比讀十篇分析有效。',delay:650},
+
+   {type:'gate',label:'繼續 → 這想法怎麼會錯？',userEcho:'好，那它怎麼會錯？'},
+   {type:'agentText',text:'好問題。與其查所有事，我們先看它最可能破裂的地方。',delay:700},
+   {type:'agentCard',delay:1100,html:cardC(),step:'C'},
+   {type:'agentText',text:'那我問你——如果真的看到第一個警訊，你還想繼續嗎？',delay:800},
+   {type:'choice',key:'C',options:[
+      {label:'會，我理解風險仍想參與',reply:'好。那就把那個警訊記牢——它出現時，別假裝沒看到。'},
+      {label:'看情況，我會重新評估',reply:'合理。保留彈性，但先想好「重新評估」具體要看什麼，不然等於沒有邊界。'},
+      {label:'不會，那我就出場',reply:'清楚。你進場前就先想好出場條件，這件事多數人做不到。'}]},
+
+   {type:'gate',label:'繼續 → 我是不是太晚了？',userEcho:'那我現在進場，會太晚嗎？'},
+   {type:'agentText',text:'這是跟單最深的恐懼：接在最高點。我幫你看這個敘事現在站在哪。',delay:750},
+   {type:'agentCard',delay:1150,html:cardD(),step:'D'},
+   {type:'agentText',text:'我只描述位置，不說能不能買。看完這個，你的傾向有變嗎？',delay:800},
+   {type:'choice',key:'D',options:[
+      {label:'心動 → 還是想買',reply:'可以。但回頭看一眼卡 C 的警訊——你要帶著「後手」的認知進場，不是被 FOMO 推進場。'},
+      {label:'心動 → 但先等',reply:'很多老手就是這樣做的。你不是不參與，是選擇不接後手。'},
+      {label:'沒變 → 放掉',reply:'這需要紀律。放掉一個「好故事」，比買進難多了。'}]},
+
+   {type:'agentText',text:'好。最後一步，也是最重要的一步——把這些變成一句「你的」判斷，不是我的答案。',delay:750},
+   {type:'agentText',text:'我先幫你起草，但立場那行你一定要自己寫，而且至少改我一句。',delay:800},
+   {type:'draft'}
+  ];
+}
+
+function startAgent(fromSym){
+  go('agent');
+  if(state.running) return;
+  state.running=true; state.saved=false; state.plan='';
+  pending=null; pendingSuggest=null;
+  chat.innerHTML='';
+  document.querySelectorAll('#flowSteps span').forEach(s=>s.classList.remove('active','done'));
+  queue=buildScript();
+  // if launched from a non-MU stock's order page, be honest that the walkthrough uses MU
+  if(fromSym && fromSym!=='MU' && STOCKS[fromSym]){
+    queue.unshift({type:'agentText',text:`你想判斷 ${STOCKS[fromSym].name}——我先用美光帶你走一遍同樣的流程，之後每檔都是這五步。`,delay:500});
+  }
+  run();
+}
+function resetAgent(){
+  state.C=state.D=null;state.stance='';state.plan='';state.running=false;
+  pending=null;pendingSuggest=null;
+  chat.innerHTML='';
+  startAgent();
+}
+
+/* ---- rich cards ---- */
+function cardA(){return `
+<div class="rc">
+  <div class="rc-h"><div class="b">A</div><div class="t">可檢查論點</div><div class="ph">看懂想法</div></div>
+  <div class="rc-b">
+    <div class="line"><div class="k">這段內容要你相信</div><div class="v">美光正處在一個由 AI 記憶體需求驅動、會讓股價大幅上漲的多年上升循環，而且「現在不上車就來不及」。</div></div>
+    <div class="line"><div class="k">股票 · 主題 · 催化 · 時間範圍</div><div class="v metaline">
+      <span class="chip">股票 <b>美光 MU</b></span><span class="chip">主題 <b>AI / HBM</b></span>
+      <span class="chip">催化 <b>AI 伺服器需求</b></span><span class="chip">範圍 <b>數季～數年</b></span></div></div>
+    <div class="line"><div class="k">主張分類</div>
+      <div class="claim fact"><div class="ch">可驗證事實 <span class="cn">可查</span></div><div class="cb">HBM 用於 AI 伺服器；美光是 HBM 供應商之一。</div></div>
+      <div class="claim interp"><div class="ch">創作者解讀 <span class="cn">觀點</span></div><div class="cb">「這波不一樣」「十年一遇」是他對週期的詮釋。</div></div>
+      <div class="claim predict"><div class="ch">未來預測 <span class="cn">未定</span></div><div class="cb">「輕鬆翻倍」是價格預測，無時間與依據。</div></div>
+      <div class="claim emotion"><div class="ch">情緒敘事 <span class="cn">FOMO</span></div><div class="cb">「錯過就沒下一班車」在製造急迫感。</div></div>
+    </div>
+  </div>
+  <div class="rc-note"><b>邊界　</b>純翻譯層，不評論對錯、不給買賣傾向。</div>
+</div>`;}
+
+function cardB(){return `
+<div class="rc">
+  <div class="rc-h"><div class="b">B</div><div class="t">最關鍵的假設</div><div class="ph">原型卡 1 · 判斷交易</div></div>
+  <div class="rc-b">
+    <div class="line"><div class="k">這筆最需要相信的一件事</div><div class="v">AI 對 <b>HBM 高頻寬記憶體</b>的需求，強到足以撐起一個「多年」的漲價循環，而不只是一兩季的旺季。</div></div>
+    <div class="line"><div class="k">5 分鐘先查這個</div><div class="v">最近一季法說會裡，美光對 <b>HBM 供不應求會延續多久</b>怎麼講？是「已被完售到明年」還是「需求強勁」這種模糊詞？</div></div>
+    <div class="line"><div class="k">如果不成立，這比較像</div><div class="v">一次<b>正常的記憶體旺季</b>被講成了「十年一遇」——故事被放大，不是循環真的不一樣。</div></div>
+  </div>
+  <div class="rc-note"><b>邊界　</b>假設要具體到可查、可判斷、可問人。不出目標價，不排多個假設。</div>
+</div>`;}
+
+function cardC(){return `
+<div class="rc">
+  <div class="rc-h"><div class="b">C</div><div class="t">下行風險</div><div class="ph">判斷交易</div></div>
+  <div class="rc-b">
+    <div class="line"><div class="k">這個想法可能錯在</div><div class="v">記憶體是高度<b>景氣循環</b>的產業。若 HBM 需求被產能追上、或 AI 資本支出放緩，價格與毛利會快速反轉——「超級循環」也可能只是週期高點。</div></div>
+    <div class="line"><div class="k">第一個警訊</div><div class="v">記憶體現貨報價或美光財測轉弱、雲端大廠下修資本支出、或公司談到「庫存修正」。</div></div>
+  </div>
+  <div class="rc-note"><b>邊界　</b>風險要變具體，不是變可怕。不給停損、倉位、組合影響。</div>
+</div>`;}
+
+function cardD(){return `
+<div class="rc">
+  <div class="rc-h"><div class="b">D</div><div class="t">太晚了嗎</div><div class="ph">價格是否已反映</div></div>
+  <div class="rc-b">
+    <div class="line"><div class="k">市場對這件事的共識到哪</div><div class="v">「AI 記憶體超級循環」已是<b>主流敘事</b>，賣方普遍上調目標價、媒體大量報導。不是冷門角落。</div></div>
+    <div class="line"><div class="k">相對價格走勢是領先還落後</div><div class="v"><b>偏落後</b>——股價過去數月已大幅上漲、明顯反映此敘事。</div></div>
+    <div class="line"><div class="k">你大概是第幾手</div><div class="v"><b>偏後手</b>。你聽到的是已經傳開的故事，不是別人還沒看到的新資訊。</div></div>
+  </div>
+  <div class="rc-note"><b>高邊界風險　</b>這是注意力與價格「狀態」的描述，不是 timing 建議。</div>
+</div>`;}
+
+/* ---- editable draft (candidate F) ---- */
+const draftInit={
+  f1:'AI 對 HBM 記憶體的需求是真的，美光確實是受惠者之一。',
+  f2:'這是「十年一遇的超級循環」，還是記憶體週期又一次的高點？我分不出來。',
+  f3:'股價已經漲很多、故事已經傳開——我現在進場是承擔「接後手」的風險。',
+  f4:''
+};
+function renderDraft(){
+  const node=el(`
+  <div class="rc draft">
+    <div class="rc-h"><div class="b">F</div><div class="t">你自己的判斷草稿</div><div class="ph">主控權</div></div>
+    <div class="rc-b">
+      <label>我相信</label><textarea id="f1" rows="2">${draftInit.f1}</textarea>
+      <label>我不確定</label><textarea id="f2" rows="2">${draftInit.f2}</textarea>
+      <label>我要想清楚的事</label><textarea id="f3" rows="2">${draftInit.f3}</textarea>
+      <label>我目前的立場（這行請自己寫）</label><textarea id="f4" rows="2" placeholder="用你自己的話：現在你打算買、等、還是放掉，為什麼。"></textarea>
+      <label class="mark"><input type="checkbox" id="notMine"> 我要標記其中一句「這不是我的想法」</label>
+      <div class="valid" id="valF"></div>
+    </div>
+  </div>`);
+  addAgentRaw(node);
+  setStep('F');
+  const gate=el(`<div class="gate"><button class="cta">完成，存進我的判斷庫 →</button></div>`);
+  chat.appendChild(gate);scrollDown();
+
+  ['f1','f2','f3'].forEach(id=>{
+    const t=node.querySelector('#'+id);
+    t.addEventListener('input',()=>t.classList.toggle('chg', t.value.trim()!==draftInit[id].trim() && t.value.trim()!==''));
+  });
+
+  gate.querySelector('button').onclick=()=>{
+    const val=node.querySelector('#valF');
+    const stance=node.querySelector('#f4').value.trim();
+    const changed=['f1','f2','f3'].some(id=>{const v=node.querySelector('#'+id).value.trim();return v!==draftInit[id].trim() && v!=='';});
+    const marked=node.querySelector('#notMine').checked;
+    if(!stance){val.className='valid err';val.textContent='「我目前的立場」要用你自己的話寫——這行沒有預設答案。';return;}
+    if(!changed && !marked){val.className='valid err';val.textContent='這是你的草稿：至少改我一句，或勾選「這不是我的想法」。';return;}
+    state.stance=stance;
+    node.querySelectorAll('textarea,input').forEach(x=>x.disabled=true);
+    gate.remove();
+    addUser('我的立場：'+stance);
+    const warn=(store.watch.MU&&store.watch.MU.warning)||'你設的第一個警訊';
+    queue=[
+      {type:'agentText',text:'這句話是你的了 ✅ 但先別急著走——現在你還冷靜，先幫未來的自己設好退場。'},
+      {type:'agentText',text:'你剛標記這筆的第一個警訊是：「'+warn+'」。如果它真的出現，你打算怎麼做？',delay:900},
+      {type:'exitplan', warning:warn},
+      {type:'agentText',text:'進場前就先想好退場——這一步多數人不會做。Scanner 之後會幫你盯著這個警訊。',delay:750},
+      {type:'agentCard',delay:1000,html:finalCard()},
+      {type:'agentText',text:'再幫你抽一條下次能直接用的原則 👇',delay:900},
+      {type:'agentCard',delay:1150,html:principleCard()},
+      {type:'fn',fn:saveJudgment},
+      {type:'agentText',text:'立場、退場計畫、原則都存進判斷庫，Scanner 已開始盯這個假說。',delay:850},
+      {type:'gate',label:'查看判斷庫 →'},
+      {type:'fn',fn:()=>{state.running=false;go('library');}}
+    ];
+    run();
+  };
+}
+
+function planDefault(cChoice){
+  return ({
+    '不會，那我就出場':'警訊一出現，我就出場，不凹單。',
+    '看情況，我會重新評估':'警訊出現時我會重新評估——重看假說還成不成立，再決定加減碼。',
+    '會，我理解風險仍想參與':'就算警訊出現我仍想參與，但會盯緊、控制部位，絕不加碼凹單。'
+  })[cChoice] || '';
+}
+function renderExitPlan(warning){
+  const node=el(`
+  <div class="rc draft">
+    <div class="rc-h"><div class="b">↩</div><div class="t">你的退場計畫（if-then）</div><div class="ph">進場即設退場</div></div>
+    <div class="rc-b">
+      <div style="font-size:12.5px;color:var(--ink-2);line-height:1.5;margin-bottom:8px">如果我標記的警訊——<b style="color:var(--ink)">${warning}</b>——真的出現，我就……</div>
+      <textarea id="planInput" rows="3" placeholder="用你自己的話寫下退場動作，例如：減碼一半、全部出場、或先重新評估。">${planDefault(state.C)}</textarea>
+      <div class="valid" id="valPlan"></div>
+    </div>
+  </div>`);
+  addAgentRaw(node);
+  const gate=el(`<div class="gate"><button class="cta">設定我的退場計畫 →</button></div>`);
+  chat.appendChild(gate);scrollDown();
+  gate.querySelector('button').onclick=()=>{
+    const v=node.querySelector('#planInput').value.trim();
+    if(!v){node.querySelector('#valPlan').className='valid err';node.querySelector('#valPlan').textContent='退場計畫要你自己寫——這是你進場前給未來自己的承諾。';return;}
+    state.plan=v;
+    node.querySelectorAll('textarea').forEach(x=>x.disabled=true);
+    gate.remove();
+    addUser('我的退場計畫：'+v);
+    run();
+  };
+}
+
+function finalCard(){
+  const cLine=state.C?('看到警訊：'+state.C):'—';
+  const dLine=state.D||'—';
+  return `
+  <div class="rc">
+    <div class="rc-h"><div class="b" style="background:var(--ok)">✓</div><div class="t">這一輪判斷</div><div class="ph">5 分鐘 · 已存</div></div>
+    <div class="rc-b">
+      <div class="line"><div class="k">A 看懂</div><div class="v">拆出核心論點：AI/HBM 超級循環 + FOMO 敘事。</div></div>
+      <div class="line"><div class="k">B 關鍵假設</div><div class="v">需相信 HBM 需求撐得起多年循環；先查法說會怎麼講延續性。</div></div>
+      <div class="line"><div class="k">C 下行</div><div class="v">${cLine}。可能錯在記憶體是景氣循環產業。</div></div>
+      <div class="line"><div class="k">D 位置</div><div class="v">你的傾向：${dLine}。敘事主流、股價落後、你偏後手。</div></div>
+      <div class="line"><div class="k">F 你的立場</div><div class="v"><b>「${state.stance}」</b></div></div>
+      ${state.plan?`<div class="line"><div class="k">↩ 退場計畫</div><div class="v">${state.plan}</div></div>`:''}
+    </div>
+    <div class="rc-note" style="background:rgba(55,201,139,.1);border-color:rgba(55,201,139,.25);color:#a6e8c8"><b style="color:var(--ok)">全程沒出現</b> 進場價、停損、或「該不該買」。</div>
+  </div>`;
+}
+
+function principleCard(){
+  const nudge = state.D==='沒變 → 放掉'
+    ? '你這次放掉了一個好故事——把「我為什麼放掉」記下來，比記住買了什麼更有用。'
+    : '你選擇帶著後手的認知往前——那就更要記牢，你是在管理風險，不是在賭故事。';
+  return `
+  <div class="rc">
+    <div class="rc-h"><div class="b" style="background:linear-gradient(135deg,var(--accent),var(--accent-2))">G</div><div class="t">從這個案例抽出一條原則</div><div class="ph">學習</div></div>
+    <div class="rc-b">
+      <div class="line"><div class="k">這次教你的事</div><div class="v">${nudge}</div></div>
+      <div class="line"><div class="k">下次看到類似想法，先問</div><div class="v"><b>「這個故事，我是第幾手聽到的？」</b>敘事已傳開、股價已反映時，你承擔的是接後手的風險，不是資訊優勢。</div></div>
+    </div>
+    <div class="rc-note" style="background:rgba(55,201,139,.1);border-color:rgba(55,201,139,.25);color:#a6e8c8"><b style="color:var(--ok)">已加入</b> 你的原則庫 · 候選 G</div>
+  </div>`;
+}
+
+</script>
+</body>
+</html>

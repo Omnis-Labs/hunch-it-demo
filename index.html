@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hunch It — 原型 Demo 總覽</title>
+<style>
+  :root{
+    --bg:#E7EBEA; --surface:#FCFEFD; --surface-2:#EEF3F1; --raise:#FFFFFF;
+    --border:#D0D9D6; --border-strong:#B7C4C0;
+    --ink:#14201E; --ink-2:#566A65; --ink-3:#84948F;
+    --accent:#0B6E75; --accent-2:#0A565C; --accent-ink:#FFFFFF; --accent-wash:#DDEDEC;
+    --warn:#9C6B15; --warn-wash:#F1E6CE;
+    --shadow:0 1px 2px rgba(18,32,30,.05), 0 8px 28px -14px rgba(18,32,30,.22);
+    --shadow-lg:0 2px 4px rgba(18,32,30,.06), 0 22px 46px -20px rgba(18,32,30,.3);
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --r:16px; --r-sm:10px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0B110F; --surface:#121A18; --surface-2:#0F1614; --raise:#17211E;
+      --border:#26332F; --border-strong:#33433E; --ink:#E7EEEB; --ink-2:#94A5A0; --ink-3:#66756F;
+      --accent:#3BB6AF; --accent-2:#52C9C1; --accent-ink:#06201F; --accent-wash:#13302E;
+      --warn:#DDA84C; --warn-wash:#332818;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
+      --shadow-lg:0 2px 6px rgba(0,0,0,.5), 0 26px 52px -22px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#E7EBEA; --surface:#FCFEFD; --surface-2:#EEF3F1; --raise:#FFFFFF; --border:#D0D9D6; --border-strong:#B7C4C0;
+    --ink:#14201E; --ink-2:#566A65; --ink-3:#84948F; --accent:#0B6E75; --accent-2:#0A565C; --accent-ink:#FFFFFF; --accent-wash:#DDEDEC;
+    --warn:#9C6B15; --warn-wash:#F1E6CE;
+    --shadow:0 1px 2px rgba(18,32,30,.05), 0 8px 28px -14px rgba(18,32,30,.22);
+    --shadow-lg:0 2px 4px rgba(18,32,30,.06), 0 22px 46px -20px rgba(18,32,30,.3);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B110F; --surface:#121A18; --surface-2:#0F1614; --raise:#17211E; --border:#26332F; --border-strong:#33433E;
+    --ink:#E7EEEB; --ink-2:#94A5A0; --ink-3:#66756F; --accent:#3BB6AF; --accent-2:#52C9C1; --accent-ink:#06201F; --accent-wash:#13302E;
+    --warn:#DDA84C; --warn-wash:#332818;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 6px rgba(0,0,0,.5), 0 26px 52px -22px rgba(0,0,0,.7);
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font-sans);line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px clamp(16px,4vw,32px);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:baseline;gap:9px;font-weight:700;letter-spacing:-.01em}
+  .brand .mk{color:var(--accent)}
+  .tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-wash);padding:3px 8px;border-radius:100px}
+  .spacer{flex:1}
+  .ghost-btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:7px 12px;border-radius:100px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .ghost-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+  .wrap{max-width:920px;margin:0 auto;padding:clamp(28px,5vw,56px) clamp(16px,4vw,32px) 80px}
+  .hero{margin-bottom:38px}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+  .hero h1{font-size:clamp(1.9rem,5vw,2.9rem);line-height:1.1;letter-spacing:-.025em;margin:0 0 14px;text-wrap:balance;font-weight:760}
+  .hero p{color:var(--ink-2);font-size:1.05rem;max-width:62ch;margin:0}
+  .note{margin-top:16px;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--warn);background:var(--warn-wash);border:1px solid color-mix(in srgb,var(--warn) 26%,transparent);padding:6px 11px;border-radius:100px}
+  .note::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--warn)}
+
+  .sec{margin-top:36px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+  .sec-head h2{font-size:1.15rem;margin:0;letter-spacing:-.01em}
+  .sec-head .sh-sub{font-size:12.5px;color:var(--ink-3)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+
+  .card{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow);transition:transform .16s cubic-bezier(.2,.7,.2,1),border-color .16s,box-shadow .16s}
+  .card:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:var(--shadow-lg)}
+  .card .ct{display:flex;align-items:center;gap:9px;font-size:1.06rem;font-weight:720;letter-spacing:-.01em}
+  .card .pill{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:100px;background:var(--surface-2);color:var(--ink-3);border:1px solid var(--border)}
+  .card .pill.new{background:var(--accent-wash);color:var(--accent);border-color:transparent}
+  .card .cd{font-size:13.5px;color:var(--ink-2);line-height:1.5;flex:1}
+  .card .go{font-size:13px;font-weight:600;color:var(--accent);display:inline-flex;align-items:center;gap:6px;margin-top:2px}
+  .card .go svg{width:15px;height:15px}
+  .card.featured{border-color:color-mix(in srgb,var(--accent) 40%,transparent);background:linear-gradient(180deg,var(--accent-wash),var(--surface))}
+  .card.featured .ct{color:var(--accent)}
+  .card.wide{grid-column:1/-1}
+
+  footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--border);font-size:12.5px;color:var(--ink-3);line-height:1.6}
+  footer b{color:var(--ink-2)}
+  :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
+  @media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important}}
+</style>
+</head>
+<body>
+<script>(function(){try{var t=localStorage.getItem("hi-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<header class="topbar">
+  <div class="brand"><span>Hunch It<span class="mk">.</span></span></div>
+  <span class="tag">原型 Demo</span>
+  <span class="spacer"></span>
+  <button class="ghost-btn" id="themeBtn"><span id="themeIcon">◐</span><span id="themeLbl">深色</span></button>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Omnis Labs · Hunch It</div>
+    <h1>互動原型總覽</h1>
+    <p>純靜態、單一 HTML、無後端、無外部請求。點任一張卡片直接在瀏覽器打開。分成兩組:一組是完整的「判斷流程 Agent」原型,另一組是這一輪為了驗證「哪條 flow 對用戶最重要」而做的假說驗證原型。</p>
+    <div class="note">全部為候選原型,非產品決策;示意數字非即時行情,不構成投資建議</div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>假說驗證原型組</h2><span class="sh-sub">拆成可各自獨立測試的核心揭露 · 內建行為指標收集</span></div>
+    <div class="grid">
+      <a class="card featured wide" href="triage.html">
+        <div class="ct">三扇門入口 <span class="pill new">Phase 0</span></div>
+        <div class="cd">「你現在手上有什麼?」— 一個別人的想法 / 一家你在看的公司 / 一整個組合。量哪扇門最多人選、選了想不想用;三扇門後面各自接到下方的深度原型。<b>建議從這裡開始。</b></div>
+        <span class="go">打開入口 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card" href="idea-validator.html">
+        <div class="ct">想法驗證器 <span class="pill new">MVP 1</span></div>
+        <div class="cd">貼一則 KOL / 朋友的內容,拆成事實 / 解讀 / 預測 / 最需要成立的假設,逐一挑戰,再看來源勝率。</div>
+        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card" href="implied-expectations.html">
+        <div class="ct">期待差 <span class="pill new">MVP 7</span></div>
+        <div class="cd">現在的價格已經假設這家公司要做到什麼?拿你自己的預期去比,算出「期待差」。</div>
+        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card" href="hidden-exposure.html">
+        <div class="ct">隱藏曝險偵測器 <span class="pill new">MVP 12</span></div>
+        <div class="cd">建一個組合,先猜你最大的單一主題曝險,再揭露「表面分散、其實同一個賭注」。</div>
+        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>判斷流程 Agent 原型</h2><span class="sh-sub">把一段 KOL 內容走完整條判斷流程,收斂成你自己的立場</span></div>
+    <div class="grid">
+      <a class="card" href="agent-prototype.html">
+        <div class="ct">交易判斷 Agent <span class="pill">完整版</span></div>
+        <div class="cd">A 看懂想法 → B 關鍵假設 → C 下行風險 → D 太晚了嗎 → F 你自己的立場,含退場計畫、判斷庫、持倉與立場監控。</div>
+        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card" href="hunch-it-standalone.html">
+        <div class="ct">線性版原型 <span class="pill">早期</span></div>
+        <div class="cd">早期 A·C·D·F 線性版,判斷流程的最初形狀。</div>
+        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <b>邊界(貫穿全產品):</b>不給進場價、停損、倉位或個人財務建議;只描述狀態,不下「買 / 不買」指令;所有立場句由使用者擁有。<br>
+    Omnis Labs · Hunch It — 互動原型,內部評估用途。
+  </footer>
+</main>
+
+<script>
+  var b=document.getElementById("themeBtn");
+  function cur(){var t=document.documentElement.getAttribute("data-theme");return t||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");}
+  function lbl(){var n=cur()==="dark"?"light":"dark";document.getElementById("themeIcon").textContent=n==="dark"?"◑":"◐";document.getElementById("themeLbl").textContent=n==="dark"?"深色":"淺色";}
+  b.addEventListener("click",function(){var n=cur()==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",n);try{localStorage.setItem("hi-theme",n);}catch(e){}lbl();});
+  lbl();
+</script>
+</body>
+</html>

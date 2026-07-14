@@ -1,0 +1,577 @@
+<title>隱藏曝險偵測器 · MVP 12 原型</title>
+<style>
+  :root{
+    --bg:#E7EBEA; --surface:#FCFEFD; --surface-2:#EEF3F1; --raise:#FFFFFF;
+    --border:#D0D9D6; --border-strong:#B7C4C0;
+    --ink:#14201E; --ink-2:#566A65; --ink-3:#84948F;
+    --accent:#0B6E75; --accent-2:#0A565C; --accent-ink:#FFFFFF; --accent-wash:#DDEDEC;
+    --pos:#1F7A4D; --pos-wash:#DCEDE2; --neg:#BE452A; --neg-wash:#F5E1D9; --warn:#9C6B15; --warn-wash:#F1E6CE;
+    --shadow:0 1px 2px rgba(18,32,30,.05), 0 8px 28px -14px rgba(18,32,30,.22);
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --r:14px; --r-sm:9px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0B110F; --surface:#121A18; --surface-2:#0F1614; --raise:#17211E;
+      --border:#26332F; --border-strong:#33433E;
+      --ink:#E7EEEB; --ink-2:#94A5A0; --ink-3:#66756F;
+      --accent:#3BB6AF; --accent-2:#52C9C1; --accent-ink:#06201F; --accent-wash:#13302E;
+      --pos:#4FC98A; --pos-wash:#123324; --neg:#E9805C; --neg-wash:#3A211A; --warn:#DDA84C; --warn-wash:#332818;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#E7EBEA; --surface:#FCFEFD; --surface-2:#EEF3F1; --raise:#FFFFFF;
+    --border:#D0D9D6; --border-strong:#B7C4C0; --ink:#14201E; --ink-2:#566A65; --ink-3:#84948F;
+    --accent:#0B6E75; --accent-2:#0A565C; --accent-ink:#FFFFFF; --accent-wash:#DDEDEC;
+    --pos:#1F7A4D; --pos-wash:#DCEDE2; --neg:#BE452A; --neg-wash:#F5E1D9; --warn:#9C6B15; --warn-wash:#F1E6CE;
+    --shadow:0 1px 2px rgba(18,32,30,.05), 0 8px 28px -14px rgba(18,32,30,.22);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B110F; --surface:#121A18; --surface-2:#0F1614; --raise:#17211E;
+    --border:#26332F; --border-strong:#33433E; --ink:#E7EEEB; --ink-2:#94A5A0; --ink-3:#66756F;
+    --accent:#3BB6AF; --accent-2:#52C9C1; --accent-ink:#06201F; --accent-wash:#13302E;
+    --pos:#4FC98A; --pos-wash:#123324; --neg:#E9805C; --neg-wash:#3A211A; --warn:#DDA84C; --warn-wash:#332818;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .app{background:var(--bg);color:var(--ink);font-family:var(--font-sans);min-height:100vh;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+    padding:12px clamp(16px,4vw,32px);background:color-mix(in srgb,var(--bg) 82%,transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:baseline;gap:9px;font-weight:700;letter-spacing:-.01em}
+  .brand .mk{color:var(--accent)}
+  .tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-wash);padding:3px 8px;border-radius:100px}
+  .spacer{flex:1}
+  .ghost-btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:7px 12px;border-radius:100px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,color .15s}
+  .ghost-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+  .col{max-width:780px;margin:0 auto;padding:clamp(24px,5vw,52px) clamp(16px,4vw,32px) 140px}
+  .lede{margin-bottom:26px}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+  .lede h1{font-size:clamp(1.7rem,4.6vw,2.5rem);line-height:1.12;letter-spacing:-.02em;margin:0 0 14px;text-wrap:balance;font-weight:750}
+  .lede p{color:var(--ink-2);font-size:1.02rem;max-width:60ch;margin:0}
+  .disclaimer{margin-top:16px;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--warn);background:var(--warn-wash);border:1px solid color-mix(in srgb,var(--warn) 26%,transparent);padding:6px 11px;border-radius:100px}
+  .disclaimer::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--warn)}
+
+  .rail{display:flex;gap:8px;margin:26px 0 22px}
+  .rail .step{flex:1;display:flex;flex-direction:column;gap:7px}
+  .rail .bar{height:4px;border-radius:100px;background:var(--border)}
+  .rail .step.active .bar{background:var(--accent)}
+  .rail .step.done .bar{background:color-mix(in srgb,var(--accent) 55%,transparent)}
+  .rail .lab{font-size:11.5px;color:var(--ink-3);letter-spacing:.03em;display:flex;gap:6px;align-items:center}
+  .rail .step.active .lab,.rail .step.done .lab{color:var(--ink-2)}
+  .rail .num{font-family:var(--font-mono);font-weight:600}
+
+  .stage{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px;box-shadow:var(--shadow);overflow:hidden}
+  .stage-head{display:flex;align-items:center;gap:12px;padding:18px 22px}
+  .badge{width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;font-family:var(--font-mono);font-weight:700;font-size:14px;background:var(--accent-wash);color:var(--accent)}
+  .stage-head h2{font-size:1.12rem;margin:0;letter-spacing:-.01em;font-weight:700}
+  .stage-head .sub{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .stage-body{padding:0 22px 22px;display:flex;flex-direction:column;gap:20px}
+  .stage.is-locked{background:var(--surface-2);box-shadow:none;border-style:dashed}
+  .stage.is-locked .stage-body{display:none}
+  .stage.is-locked .badge{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--border)}
+  .stage.is-locked .stage-head h2{color:var(--ink-3)}
+  .lock-hint{margin-left:auto;font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+  .lock-hint svg{width:13px;height:13px;opacity:.7}
+  @keyframes reveal{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .stage.just-unlocked .stage-body{animation:reveal .4s ease both}
+
+  .field > .flabel{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:9px;display:block}
+  .field > .fhelp{font-size:12.5px;color:var(--ink-3);margin:-4px 0 9px}
+
+  /* portfolio builder */
+  .palette{display:flex;flex-wrap:wrap;gap:8px}
+  .pchip{border:1px solid var(--border-strong);background:var(--raise);color:var(--ink);font:inherit;font-size:13px;padding:7px 12px;border-radius:100px;cursor:pointer;display:inline-flex;gap:7px;align-items:center;transition:.15s}
+  .pchip .tk{font-family:var(--font-mono);font-size:12px;color:var(--ink-3)}
+  .pchip:hover{border-color:var(--accent);color:var(--accent)}
+  .pchip:disabled{opacity:.4;cursor:not-allowed}
+  .pchip.added{background:var(--accent-wash);border-color:var(--accent);color:var(--accent)}
+  .pchip.added .tk{color:var(--accent)}
+
+  .holdings{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+  .hrow{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--raise)}
+  .hrow:last-child{border-bottom:none}
+  .hrow .hn{flex:1;min-width:0;font-size:13.5px}
+  .hrow .hn .tk{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);margin-left:6px}
+  .hrow .win{width:74px;display:flex;align-items:center;gap:3px}
+  .hrow .win input{width:52px;font:inherit;font-family:var(--font-mono);font-size:13.5px;text-align:right;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)}
+  .hrow .win .pc{color:var(--ink-3);font-size:12px}
+  .hrow .rm{border:none;background:none;color:var(--ink-3);font-size:18px;line-height:1;cursor:pointer;padding:2px 4px;border-radius:6px}
+  .hrow .rm:hover{color:var(--neg)}
+  .empty-h{text-align:center;color:var(--ink-3);font-size:13px;padding:18px 0}
+  .total-line{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink-2);margin-top:10px}
+  .total-line .tv{font-family:var(--font-mono);font-weight:700}
+  .total-line .tv.warn{color:var(--warn)}
+  .builder-actions{display:flex;gap:9px;flex-wrap:wrap}
+
+  .slider-row{display:flex;flex-direction:column;gap:10px}
+  .slider-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .slider-top .k{font-size:13px;font-weight:600}
+  .slider-top .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;color:var(--accent)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:100px;background:var(--surface-2);outline:none;cursor:pointer;border:1px solid var(--border)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--raise);box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:grab}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--raise);box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:grab}
+  .scale-hint{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);font-family:var(--font-mono)}
+  .chips{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{border:1px solid var(--border-strong);background:var(--raise);color:var(--ink);font:inherit;font-size:14px;padding:9px 15px;border-radius:100px;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--accent)}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+  .anchor-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:16px;display:flex;flex-direction:column;gap:18px}
+  .anchor-box .atitle{font-size:13px;font-weight:700;color:var(--ink);display:flex;gap:8px;align-items:center}
+  .anchor-box .atitle::before{content:"?";width:19px;height:19px;flex:none;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:700;display:grid;place-items:center}
+
+  .primary-cta{align-self:flex-start;border:none;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:600;font-size:14.5px;padding:12px 22px;border-radius:100px;cursor:pointer;display:inline-flex;align-items:center;gap:9px;transition:background .15s,transform .05s;box-shadow:var(--shadow)}
+  .primary-cta:hover{background:var(--accent-2)}
+  .primary-cta:active{transform:translateY(1px)}
+  .primary-cta:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+  .primary-cta svg{width:16px;height:16px}
+
+  /* reveal */
+  .reveal-lead{font-size:1.06rem;font-weight:650;letter-spacing:-.01em;line-height:1.4}
+  .reveal-lead b{color:var(--accent)}
+  .headline{text-align:center;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:22px 20px}
+  .headline .glab{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .headline .bignum{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(2.6rem,10vw,3.6rem);line-height:1;letter-spacing:-.03em;color:var(--neg);margin:8px 0 4px}
+  .headline .gsub{font-size:13px;color:var(--ink-2)}
+  .guess-cmp{display:flex;flex-direction:column;gap:12px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--border-strong)}
+  .gc-row .gc-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px}
+  .gc-row .gc-top .num{font-family:var(--font-mono);font-weight:700}
+  .track{height:12px;border-radius:100px;background:var(--raise);border:1px solid var(--border);overflow:hidden}
+  .fill{height:100%;border-radius:100px;transition:width .55s cubic-bezier(.2,.7,.2,1)}
+  .fill.guess{background:var(--ink-3)} .fill.actual{background:var(--neg)}
+
+  .theme-card{border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+  .theme-item{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--raise)}
+  .theme-item:last-child{border-bottom:none}
+  .theme-item.top{background:var(--neg-wash);border-left:3px solid var(--neg)}
+  .theme-top{display:flex;align-items:center;gap:12px}
+  .theme-name{flex:1;font-size:13.5px;font-weight:600}
+  .theme-w{font-family:var(--font-mono);font-weight:700;font-size:16px}
+  .theme-w.over{color:var(--neg)}
+  .theme-bar{height:8px;border-radius:100px;background:var(--surface-2);overflow:hidden;margin:9px 0}
+  .theme-bar .tf{height:100%;border-radius:100px}
+  .theme-members{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .mtag{font-family:var(--font-mono);font-size:11px;background:var(--surface-2);border:1px solid var(--border);border-radius:100px;padding:2px 9px;color:var(--ink-2)}
+  .theme-item.top .mtag{background:var(--raise);border-color:color-mix(in srgb,var(--neg) 30%,transparent)}
+  .limit-flag{font-size:11.5px;font-weight:600;margin-top:8px}
+  .limit-flag.over{color:var(--neg)} .limit-flag.ok{color:var(--pos)}
+  .theme-desc{font-size:12.5px;color:var(--ink-2);line-height:1.5;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-strong)}
+
+  .illusion{display:flex;gap:11px;align-items:flex-start;background:var(--accent-wash);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent);border-radius:var(--r-sm);padding:14px 16px;font-size:14px;line-height:1.55}
+  .illusion .qm{font-family:var(--font-mono);font-weight:800;color:var(--accent);font-size:18px}
+  .illusion b{color:var(--ink)}
+
+  .divider{height:1px;background:var(--border);margin:2px 0}
+  textarea{width:100%;font:inherit;font-size:14px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--raise);color:var(--ink);resize:vertical;min-height:70px}
+  textarea::placeholder{color:var(--ink-3)}
+  .reason-wrap{display:none} .reason-wrap.show{display:block}
+
+  .summary{background:linear-gradient(180deg,var(--accent-wash),var(--surface));border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:18px;box-shadow:var(--shadow)}
+  .summary h2{margin:0 0 6px;font-size:1.2rem} .summary p{color:var(--ink-2);margin:0 0 18px;font-size:14px}
+  .sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .sum-cell{background:var(--raise);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px 15px}
+  .sum-cell .k{font-size:11.5px;color:var(--ink-3);letter-spacing:.03em}
+  .sum-cell .v{font-size:17px;font-weight:700;margin-top:5px;letter-spacing:-.01em}
+  .sum-cell .v.hl{color:var(--accent)} .sum-cell .v.neg{color:var(--neg)}
+  .sum-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+
+  .fac-toggle{position:fixed;right:18px;bottom:18px;z-index:30;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:600;padding:11px 16px;border-radius:100px;cursor:pointer;box-shadow:var(--shadow);display:inline-flex;gap:8px;align-items:center}
+  .fac-toggle:hover{border-color:var(--accent);color:var(--accent)}
+  .fac-toggle .dot{width:7px;height:7px;border-radius:50%;background:var(--pos)}
+  .fac-drawer{position:fixed;right:18px;bottom:66px;z-index:30;width:min(360px,calc(100vw - 36px));max-height:min(72vh,580px);overflow:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+  .fac-drawer h3{margin:0 0 3px;font-size:14px} .fac-drawer .fsub{font-size:12px;color:var(--ink-3);margin:0 0 14px}
+  .metric{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .metric:last-of-type{border-bottom:none}
+  .metric .mk{color:var(--ink-2)} .metric .mv{font-family:var(--font-mono);font-weight:600;text-align:right}
+  .metric .mv.na{color:var(--ink-3);font-weight:400} .metric .mv.hl{color:var(--accent)} .metric .mv.neg{color:var(--neg)}
+  .fac-cta{width:100%;margin-top:14px;justify-content:center}
+  .copied{font-size:12px;color:var(--pos);text-align:center;margin-top:8px;height:14px}
+
+  :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:4px}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+  @media (max-width:520px){.stage-head{padding:15px 16px}.stage-body{padding:0 16px 18px}}
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span>Hunch It<span class="mk">.</span></span></div>
+    <span class="tag">MVP 12 原型</span>
+    <span class="spacer"></span>
+    <button class="ghost-btn" id="themeBtn"><span id="themeIcon">◐</span><span id="themeLbl">深色</span></button>
+  </header>
+
+  <main class="col">
+    <div class="lede">
+      <div class="eyebrow">隱藏曝險偵測器</div>
+      <h1>你以為分散了。其實你在賭同一件事嗎?</h1>
+      <p>建一個你的組合(或用範例),先猜猜你最大的單一「主題」曝險多少 —— 然後看看真相。表面 8、9 檔,底下可能只是幾個賭注。</p>
+      <div class="disclaimer">原型示意數字,主題歸類為手動示範,非投資建議</div>
+    </div>
+
+    <div class="rail" id="rail">
+      <div class="step active" data-step="A"><div class="bar"></div><div class="lab"><span class="num">A</span> 建組合 · 先猜你的曝險</div></div>
+      <div class="step" data-step="B"><div class="bar"></div><div class="lab"><span class="num">B</span> 隱藏曝險揭露</div></div>
+      <div class="step" data-step="C"><div class="bar"></div><div class="lab"><span class="num">C</span> 意外嗎 · 要不要動</div></div>
+    </div>
+
+    <!-- STAGE A -->
+    <section class="stage" id="stageA">
+      <div class="stage-head"><div class="badge">A</div>
+        <div><h2>建你的組合,然後先猜一個數字</h2><div class="sub">在看到真相之前先猜 —— 這個猜測就是等下對照的基準</div></div></div>
+      <div class="stage-body">
+        <div class="field">
+          <span class="flabel">加入持倉</span>
+          <div class="fhelp">點代號加入,右邊填權重(%)。或直接用範例組合。</div>
+          <div class="palette" id="palette"></div>
+        </div>
+
+        <div class="field">
+          <div class="holdings" id="holdings"></div>
+          <div class="total-line"><span>合計權重(揭露時會自動正規化到 100%)</span><span class="tv" id="totalW">0%</span></div>
+          <div class="builder-actions" style="margin-top:12px">
+            <button class="ghost-btn" id="sampleBtn">用範例組合</button>
+            <button class="ghost-btn" id="clearBtn">清空</button>
+          </div>
+        </div>
+
+        <div class="field slider-row">
+          <div class="slider-top"><span class="k">你願意讓「單一主題」最多佔多少?(曝險上限)</span><span class="v mono" id="limitVal">30%</span></div>
+          <input type="range" id="limit" min="10" max="60" step="5" value="30">
+          <div class="scale-hint"><span>10%</span><span>60%</span></div>
+        </div>
+
+        <div class="anchor-box">
+          <div class="atitle">先別看答案 —— 你自己猜</div>
+          <div class="slider-row">
+            <div class="slider-top"><span class="k">你覺得你「最大的單一主題」曝險大概多少%?</span><span class="v mono" id="guessVal">20%</span></div>
+            <input type="range" id="guess" min="0" max="80" step="5" value="20">
+            <div class="scale-hint"><span>0%</span><span>80%</span></div>
+          </div>
+          <div class="field" style="margin:0">
+            <span class="flabel" style="margin-bottom:9px">你覺得這個組合分散嗎?</span>
+            <div class="chips" id="divChips">
+              <button class="chip" data-div="concentrated" aria-pressed="false">蠻集中的</button>
+              <button class="chip" data-div="mid" aria-pressed="false">還算平均</button>
+              <button class="chip" data-div="diversified" aria-pressed="false">很分散</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="primary-cta" id="toB" disabled>
+          揭露我的隱藏曝險
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- STAGE B -->
+    <section class="stage is-locked" id="stageB">
+      <div class="stage-head"><div class="badge">B</div><div><h2>你的組合,其實是幾個賭注</h2></div>
+        <span class="lock-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>先完成 A</span></div>
+      <div class="stage-body" id="stageBBody"></div>
+    </section>
+
+    <!-- STAGE C -->
+    <section class="stage is-locked" id="stageC">
+      <div class="stage-head"><div class="badge">C</div><div><h2>這讓你意外嗎?你會想動嗎?</h2></div>
+        <span class="lock-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>先看完 B</span></div>
+      <div class="stage-body" id="stageCBody"></div>
+    </section>
+
+    <section class="summary" id="summary" hidden>
+      <h2>這一輪的紀錄</h2>
+      <p>重點是:揭露隱藏曝險有沒有讓使用者「感到意外」並「想動」 —— 這才是 Flow 3 的鉤子。</p>
+      <div class="sum-grid" id="sumGrid"></div>
+      <div class="sum-actions">
+        <button class="primary-cta" id="againBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          再測一組
+        </button>
+        <button class="ghost-btn" id="exportBtn2">匯出這一輪 JSON</button>
+      </div>
+    </section>
+  </main>
+
+  <button class="fac-toggle" id="facToggle"><span class="dot"></span>引導者面板</button>
+  <aside class="fac-drawer" id="facDrawer" hidden>
+    <h3>行為指標(即時)</h3>
+    <p class="fsub">給引導者看的。MVP 12 成功訊號:>50% 說「沒發現這幾個是同一個賭注」。</p>
+    <div id="metricList"></div>
+    <button class="ghost-btn fac-cta" id="exportBtn">複製 JSON 到剪貼簿</button>
+    <div class="copied" id="copiedNote"></div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // ---- Wizard-of-Oz: ticker -> themes (示意歸類) ----
+  var TICKERS={
+    NVDA:{name:"NVIDIA",themes:["ai_capex"]}, MRVL:{name:"Marvell",themes:["ai_capex"]},
+    AVGO:{name:"Broadcom",themes:["ai_capex"]}, AMD:{name:"AMD",themes:["ai_capex"]},
+    TSM:{name:"台積電",themes:["ai_capex"]}, SMH:{name:"半導體 ETF",themes:["ai_capex"]},
+    VRT:{name:"Vertiv",themes:["ai_capex"]}, SMCI:{name:"美超微",themes:["ai_capex"]},
+    MSFT:{name:"Microsoft",themes:["megacap"]}, AAPL:{name:"Apple",themes:["megacap","consumer"]},
+    GOOGL:{name:"Alphabet",themes:["megacap"]}, AMZN:{name:"Amazon",themes:["megacap","consumer"]},
+    TSLA:{name:"Tesla",themes:["rate","consumer"]}, COST:{name:"Costco",themes:["consumer"]},
+    JPM:{name:"JPMorgan",themes:["financials","rate"]}, XOM:{name:"Exxon",themes:["energy"]}
+  };
+  var THEMES={
+    ai_capex:{label:"AI 資本支出持續成長",desc:"這些持倉的多頭都建立在「大廠會繼續砸錢蓋 AI 基礎設施」。一則 capex 降溫、訂單遞延的消息,會<b>同時</b>打到這幾檔 —— 它們不是分散,是同一個賭注的不同下注。"},
+    megacap:{label:"大型科技估值維持",desc:"倚賴市場願意繼續給高估值的大型科技股;利率或風險偏好一轉,會一起被重評價。"},
+    consumer:{label:"消費者支出韌性",desc:"押消費不衰退。就業或實質所得轉弱時會一起受壓。"},
+    rate:{label:"利率 / 長天期敏感",desc:"對利率特別敏感的部位,升息或殖利率走高時同向下跌。"},
+    financials:{label:"金融 / 信用",desc:"押信用環境穩定與淨利差。"},
+    energy:{label:"能源 / 油價",desc:"押油價與能源需求。"}
+  };
+  var SAMPLE={NVDA:18,MSFT:15,MRVL:9,SMH:12,TSM:8,AAPL:12,COST:10,JPM:8,XOM:8};
+
+  var $=function(id){return document.getElementById(id);},
+      el=function(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+
+  var S={round:1,holdings:{},limit:30,guess:20,guessTouched:false,divRating:null,
+    bEnterTs:null,bDwellMs:0,actualMax:null,topTheme:null,overLimit:null,surpriseGap:null,
+    surprised:null,action:null,reason:"",comment:""};
+
+  // theme
+  function curTheme(){var t=document.documentElement.getAttribute("data-theme");return t||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");}
+  function themeLbl(){var n=curTheme()==="dark"?"light":"dark";$("themeIcon").textContent=n==="dark"?"◑":"◐";$("themeLbl").textContent=n==="dark"?"深色":"淺色";}
+  $("themeBtn").addEventListener("click",function(){document.documentElement.setAttribute("data-theme",curTheme()==="dark"?"light":"dark");themeLbl();});
+  themeLbl();
+
+  function setRail(a){var o=["A","B","C"];document.querySelectorAll("#rail .step").forEach(function(st){var s=st.getAttribute("data-step");st.classList.remove("active","done");if(s===a)st.classList.add("active");else if(o.indexOf(s)<o.indexOf(a))st.classList.add("done");});}
+
+  // ---- palette ----
+  var palette=$("palette");
+  Object.keys(TICKERS).forEach(function(k){
+    var b=el("button","pchip",TICKERS[k].name+' <span class="tk">'+k+'</span>');
+    b.setAttribute("data-tk",k);
+    b.addEventListener("click",function(){addHolding(k,5);});
+    palette.appendChild(b);
+  });
+  function refreshPalette(){palette.querySelectorAll(".pchip").forEach(function(b){var k=b.getAttribute("data-tk");var on=S.holdings[k]!=null;b.classList.toggle("added",on);});}
+
+  function addHolding(k,w){ if(S.holdings[k]==null)S.holdings[k]=w; renderHoldings(); }
+  function removeHolding(k){ delete S.holdings[k]; renderHoldings(); }
+
+  function renderHoldings(){
+    var wrap=$("holdings"); wrap.innerHTML="";
+    var keys=Object.keys(S.holdings);
+    if(!keys.length){wrap.appendChild(el("div","empty-h","還沒有持倉 —— 上面點幾檔,或用範例組合"));}
+    keys.forEach(function(k){
+      var row=el("div","hrow");
+      row.innerHTML='<span class="hn">'+TICKERS[k].name+'<span class="tk">'+k+'</span></span>'+
+        '<span class="win"><input type="number" min="0" max="100" step="1" value="'+S.holdings[k]+'" data-tk="'+k+'"><span class="pc">%</span></span>'+
+        '<button class="rm" data-rm="'+k+'" aria-label="移除">&times;</button>';
+      wrap.appendChild(row);
+    });
+    wrap.querySelectorAll('input[data-tk]').forEach(function(inp){
+      inp.addEventListener("input",function(){var v=parseFloat(this.value);S.holdings[this.getAttribute("data-tk")]=isNaN(v)?0:v;updateTotal();checkA();});
+    });
+    wrap.querySelectorAll('[data-rm]').forEach(function(b){b.addEventListener("click",function(){removeHolding(this.getAttribute("data-rm"));});});
+    refreshPalette(); updateTotal(); checkA(); renderMetrics();
+  }
+  function totalWeight(){return Object.keys(S.holdings).reduce(function(s,k){return s+(+S.holdings[k]||0);},0);}
+  function updateTotal(){var t=totalWeight();var e=$("totalW");e.textContent=Math.round(t)+"%";e.className="tv"+(Math.abs(t-100)>1?" warn":"");}
+
+  $("sampleBtn").addEventListener("click",function(){S.holdings=Object.assign({},SAMPLE);renderHoldings();});
+  $("clearBtn").addEventListener("click",function(){S.holdings={};renderHoldings();});
+
+  $("limit").addEventListener("input",function(){S.limit=+this.value;$("limitVal").textContent=this.value+"%";renderMetrics();});
+  $("guess").addEventListener("input",function(){S.guess=+this.value;S.guessTouched=true;$("guessVal").textContent=this.value+"%";checkA();renderMetrics();});
+  $("divChips").addEventListener("click",function(e){var b=e.target.closest(".chip");if(!b)return;S.divRating=b.getAttribute("data-div");this.querySelectorAll(".chip").forEach(function(x){x.setAttribute("aria-pressed","false");});b.setAttribute("aria-pressed","true");checkA();renderMetrics();});
+
+  function checkA(){
+    var n=Object.keys(S.holdings).length;
+    $("toB").disabled=!(n>=3 && totalWeight()>0 && S.guessTouched && S.divRating);
+  }
+
+  // ---- compute exposure ----
+  function computeThemes(){
+    var total=totalWeight()||1;
+    var themeW={};
+    Object.keys(S.holdings).forEach(function(k){
+      var w=(+S.holdings[k]||0)/total*100;
+      (TICKERS[k].themes||[]).forEach(function(th){
+        themeW[th]=themeW[th]||{w:0,members:[]};
+        themeW[th].w+=w; themeW[th].members.push({tk:k,w:w});
+      });
+    });
+    var arr=Object.keys(themeW).map(function(th){return {th:th,w:themeW[th].w,members:themeW[th].members.sort(function(a,b){return b.w-a.w;})};});
+    arr.sort(function(a,b){return b.w-a.w;});
+    return arr;
+  }
+
+  $("toB").addEventListener("click",function(){setRail("B");unlock("stageB");buildB();S.bEnterTs=Date.now();scrollTo("stageB");renderMetrics();});
+
+  function buildB(){
+    var arr=computeThemes();
+    var top=arr[0];
+    S.actualMax=Math.round(top.w); S.topTheme=top.th;
+    S.overLimit=Math.round(top.w-S.limit);
+    S.surpriseGap=Math.round(top.w-S.guess);
+    var n=Object.keys(S.holdings).length;
+    var body=$("stageBBody"); body.innerHTML="";
+
+    body.appendChild(el("div","reveal-lead","你有 <b>"+n+" 檔</b>持倉 —— 但其中 <b>"+top.members.length+" 檔</b>其實在賭同一件事:<b>"+THEMES[top.th].label+"</b>。"));
+
+    // headline + guess compare
+    var hl=el("div","headline");
+    var guessPct=Math.min(100,S.guess/80*100), actPct=Math.min(100,top.w/80*100);
+    hl.innerHTML=
+      '<div class="glab">最大單一主題曝險</div>'+
+      '<div class="bignum mono">'+S.actualMax+'%</div>'+
+      '<div class="gsub">分散在 '+top.members.length+' 檔,但它們會一起漲、一起跌</div>'+
+      '<div class="guess-cmp">'+
+        '<div class="gc-row"><div class="gc-top"><span>你剛才猜</span><span class="num">'+S.guess+'%</span></div><div class="track"><div class="fill guess" style="width:'+guessPct+'%"></div></div></div>'+
+        '<div class="gc-row"><div class="gc-top"><span>實際</span><span class="num">'+S.actualMax+'%</span></div><div class="track"><div class="fill actual" style="width:'+actPct+'%"></div></div></div>'+
+      '</div>';
+    body.appendChild(hl);
+
+    // theme breakdown
+    var tc=el("div","theme-card");
+    arr.slice(0,4).forEach(function(t,i){
+      var isTop=i===0;
+      var over=t.w>S.limit;
+      var item=el("div","theme-item"+(isTop?" top":""));
+      var barColor=isTop?"var(--neg)":"var(--ink-3)";
+      var members=t.members.map(function(m){return '<span class="mtag">'+m.tk+' '+Math.round(m.w)+'%</span>';}).join("");
+      item.innerHTML=
+        '<div class="theme-top"><span class="theme-name">'+THEMES[t.th].label+'</span><span class="theme-w'+(over?" over":"")+'">'+Math.round(t.w)+'%</span></div>'+
+        '<div class="theme-bar"><div class="tf" style="width:'+Math.min(100,t.w)+'%;background:'+barColor+'"></div></div>'+
+        '<div class="theme-members">'+members+'</div>'+
+        (over?'<div class="limit-flag over">超過你設的上限 '+S.limit+'%,多了 '+Math.round(t.w-S.limit)+' 個百分點</div>'
+             :'<div class="limit-flag ok">在你設的上限 '+S.limit+'% 內</div>')+
+        (isTop?'<div class="theme-desc">'+THEMES[t.th].desc+'</div>':'');
+      tc.appendChild(item);
+    });
+    body.appendChild(tc);
+
+    // illusion callout
+    var divWord={concentrated:"你本來就覺得它蠻集中",mid:"你本來覺得它還算平均",diversified:"你本來覺得它很分散"}[S.divRating]||"";
+    body.appendChild(el("div","illusion","<span class=\"qm\">“</span><span>"+divWord+" —— 但實際上 <b>"+S.actualMax+"%</b> 都押在「"+THEMES[top.th].label+"」這一個賭注上。表面 "+n+" 檔,底下只有幾個賭注。</span>"));
+
+    var cta=el("button","primary-cta",'換我回應 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>');
+    cta.addEventListener("click",function(){if(S.bEnterTs)S.bDwellMs=Date.now()-S.bEnterTs;setRail("C");unlock("stageC");buildC();scrollTo("stageC");renderMetrics();});
+    body.appendChild(cta);
+  }
+
+  function buildC(){
+    var top=THEMES[S.topTheme].label;
+    var body=$("stageCBody"); body.innerHTML="";
+
+    var f1=el("div","field");
+    f1.innerHTML='<span class="flabel">在我告訴你之前,你發現這幾檔其實是「'+top+'」同一個賭注嗎?</span>';
+    var c1=el("div","chips");
+    [["no","完全沒發現"],["some","隱約覺得,但沒算過"],["yes","早就知道"]].forEach(function(o){
+      var b=el("button","chip",o[1]);b.setAttribute("aria-pressed","false");
+      b.addEventListener("click",function(){S.surprised=o[0];c1.querySelectorAll(".chip").forEach(function(x){x.setAttribute("aria-pressed","false");});b.setAttribute("aria-pressed","true");checkC();renderMetrics();});
+      c1.appendChild(b);
+    });
+    f1.appendChild(c1); body.appendChild(f1);
+
+    var f2=el("div","field");
+    f2.innerHTML='<span class="flabel">知道這個曝險後,你會想怎麼做?</span>';
+    var c2=el("div","chips");
+    [["trim","減碼這個主題到上限內"],["rebalance","分批換到別的賭注"],["hold","維持不變(留理由)"],["research","先再研究"]].forEach(function(o){
+      var b=el("button","chip",o[1]);b.setAttribute("aria-pressed","false");
+      b.addEventListener("click",function(){S.action=o[0];c2.querySelectorAll(".chip").forEach(function(x){x.setAttribute("aria-pressed","false");});b.setAttribute("aria-pressed","true");$("reasonWrap").classList.toggle("show",o[0]==="hold");checkC();renderMetrics();});
+      c2.appendChild(b);
+    });
+    f2.appendChild(c2);
+    var rw=el("div","reason-wrap field");rw.id="reasonWrap";rw.style.marginTop="12px";
+    var rta=document.createElement("textarea");rta.placeholder="維持不變也可以 —— 但寫下你為什麼願意扛這個集中曝險。";
+    rta.addEventListener("input",function(){S.reason=this.value;renderMetrics();});
+    rw.appendChild(rta); f2.appendChild(rw); body.appendChild(f2);
+
+    body.appendChild(el("div","divider"));
+    var f3=el("div","field");
+    f3.innerHTML='<span class="flabel">看完這一頁,你最大的一句感想?</span>';
+    var ta=document.createElement("textarea");ta.placeholder="例如:我完全沒發現這幾檔是同一個賭注…";
+    ta.addEventListener("input",function(){S.comment=this.value;renderMetrics();});
+    f3.appendChild(ta); body.appendChild(f3);
+
+    var done=el("button","primary-cta","完成並查看紀錄");done.id="doneBtn";done.disabled=true;
+    done.addEventListener("click",finish); body.appendChild(done);
+  }
+  function checkC(){var b=$("doneBtn");if(b)b.disabled=!(S.surprised&&S.action);}
+
+  function finish(){
+    var top=THEMES[S.topTheme].label;
+    var surprisedYes=(S.surprised==="no"||S.surprised==="some");
+    var grid=$("sumGrid");grid.innerHTML="";
+    function cell(k,v,cls){var d=el("div","sum-cell");d.innerHTML='<div class="k">'+k+'</div><div class="v '+(cls||"")+'">'+v+'</div>';grid.appendChild(d);}
+    cell("持倉數 → 賭注",Object.keys(S.holdings).length+" 檔");
+    cell("最大主題",top,"hl");
+    cell("你猜 → 實際",S.guess+"% → "+S.actualMax+"%",Math.abs(S.surpriseGap)>=10?"neg":"");
+    cell("超上限",(S.overLimit>0?"+"+S.overLimit+" pp":"未超標"),S.overLimit>0?"neg":"");
+    cell("意外程度",{no:"完全沒發現",some:"隱約但沒算",yes:"早就知道"}[S.surprised],surprisedYes?"hl":"");
+    cell("打算怎麼做",{trim:"減碼",rebalance:"換賭注",hold:"維持",research:"再研究"}[S.action]);
+    $("summary").hidden=false; scrollTo("summary"); renderMetrics();
+  }
+
+  $("againBtn").addEventListener("click",function(){
+    var r=S.round+1;
+    S={round:r,holdings:{},limit:30,guess:20,guessTouched:false,divRating:null,bEnterTs:null,bDwellMs:0,actualMax:null,topTheme:null,overLimit:null,surpriseGap:null,surprised:null,action:null,reason:"",comment:""};
+    relock("stageB");relock("stageC");$("summary").hidden=true;
+    $("limit").value=30;$("limitVal").textContent="30%";$("guess").value=20;$("guessVal").textContent="20%";
+    $("divChips").querySelectorAll(".chip").forEach(function(x){x.setAttribute("aria-pressed","false");});
+    renderHoldings();setRail("A");scrollTo("stageA");renderMetrics();
+  });
+
+  function unlock(id){var s=$(id);s.classList.remove("is-locked");s.classList.add("just-unlocked");setTimeout(function(){s.classList.remove("just-unlocked");},450);}
+  function relock(id){$(id).classList.add("is-locked");$(id+"Body").innerHTML="";}
+  function scrollTo(id){var r=matchMedia("(prefers-reduced-motion:reduce)").matches;$(id).scrollIntoView({behavior:r?"auto":"smooth",block:"start"});}
+
+  // facilitator
+  var drawer=$("facDrawer");
+  $("facToggle").addEventListener("click",function(){drawer.hidden=!drawer.hidden;if(!drawer.hidden)renderMetrics();});
+  function metric(k,v,cls){return '<div class="metric"><span class="mk">'+k+'</span><span class="mv '+(cls||"")+'">'+v+'</span></div>';}
+  function na(v){return v==null||v==="";}
+  function renderMetrics(){
+    var n=Object.keys(S.holdings).length;
+    var h="";
+    h+=metric("回合","#"+S.round);
+    h+=metric("持倉數",n?String(n):"—",n?"":"na");
+    h+=metric("曝險上限",S.limit+"%");
+    h+=metric("自評分散度",S.divRating?({concentrated:"蠻集中",mid:"還算平均",diversified:"很分散"})[S.divRating]:"—",S.divRating?"":"na");
+    h+=metric("猜最大主題",S.guessTouched?S.guess+"%":"—",S.guessTouched?"":"na");
+    h+=metric("實際最大主題",S.actualMax!=null?S.actualMax+"%":"—",S.actualMax!=null?"neg":"na");
+    h+=metric("猜錯幅度",S.surpriseGap!=null?((S.surpriseGap>0?"+":"")+S.surpriseGap+" pp"):"—",S.surpriseGap!=null?"hl":"na");
+    h+=metric("最大主題",S.topTheme?THEMES[S.topTheme].label:"—",S.topTheme?"":"na");
+    h+=metric("超上限",S.overLimit!=null?(S.overLimit>0?"+"+S.overLimit+" pp":"未超"):"—",S.overLimit>0?"neg":"na");
+    h+=metric("B 段停留",S.bDwellMs?((S.bDwellMs/1000).toFixed(0)+"s"):(S.bEnterTs?"進行中…":"—"),S.bDwellMs?"":"na");
+    h+=metric("是否意外",S.surprised?({no:"完全沒發現 ✓",some:"隱約 ✓",yes:"早知道"})[S.surprised]:"—",(S.surprised==="no"||S.surprised==="some")?"hl":(S.surprised?"":"na"));
+    h+=metric("打算行動",S.action?({trim:"減碼",rebalance:"換賭注",hold:"維持",research:"再研究"})[S.action]:"—",S.action&&S.action!=="hold"?"hl":(S.action?"":"na"));
+    h+=metric("維持理由",S.action==="hold"?(na(S.reason)?"未填":"已填"):"—",S.action==="hold"&&!na(S.reason)?"hl":"na");
+    h+=metric("感想",na(S.comment)?"—":"已填",na(S.comment)?"na":"hl");
+    $("metricList").innerHTML=h;
+  }
+
+  function payload(){
+    var surprisedYes=(S.surprised==="no"||S.surprised==="some");
+    return {round:S.round,holdings:S.holdings,holdingCount:Object.keys(S.holdings).length,limit:S.limit,
+      divRating:S.divRating,guess:S.guessTouched?S.guess:null,actualMax:S.actualMax,surpriseGap:S.surpriseGap,
+      topTheme:S.topTheme,overLimit:S.overLimit,bDwellSec:S.bDwellMs?+(S.bDwellMs/1000).toFixed(1):null,
+      surprised:S.surprised,surprisedFlag:S.surprised?surprisedYes:null,action:S.action,reason:S.reason,comment:S.comment};
+  }
+  function copyJSON(){
+    var txt=JSON.stringify(payload(),null,2);
+    var done=function(){$("copiedNote").textContent="已複製到剪貼簿";setTimeout(function(){$("copiedNote").textContent="";},2200);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){fb(txt);done();});}else{fb(txt);done();}
+  }
+  function fb(txt){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);}
+  $("exportBtn").addEventListener("click",copyJSON);
+  $("exportBtn2").addEventListener("click",function(){copyJSON();drawer.hidden=false;renderMetrics();});
+
+  renderHoldings(); renderMetrics();
+})();
+</script>
