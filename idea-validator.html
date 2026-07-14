@@ -252,6 +252,22 @@
 (function(){
   "use strict";
   var SCEN={
+    panic:{title:"群體恐慌逃命",sub:"財報後崩跌,一片喊逃",
+      text:"快逃!$XYZ 財報爆雷,單季由盈轉虧,盤後崩 -38%,成長故事結束了,基本面壞掉,別接刀。",
+      who:"—— 財經社群熱門貼文,底下一片附和",
+      claim:"公司基本面已經壞掉,應該立刻賣出或避開,連抄底都別想。",
+      facts:["單季由盈轉虧、盤後大跌約 38%(可查證)。","本季認列了一筆大額費用。"],
+      interp:["「基本面壞掉」把一次性虧損,直接解讀成公司結構性崩壞 —— 這是詮釋,不是事實。","「成長故事結束」是把單一季度外推成長期趨勢。"],
+      pred:["「別接刀 / 還會更低」= 預測股價續跌,但沒有價格或估值依據。"],
+      assumptions:[
+        {t:"這次的虧損是結構性的(需求或競爭真的壞了),而不是一次性費用或認列時點造成的。",key:true},
+        {t:"市場的 -38% 還沒反映完,甚至反映不足 —— 而不是已經反映過度。",key:false},
+        {t:"管理層說這是一次性的,不可信。",key:false}
+      ],
+      catalyst:"崩跌『已經發生』;真正的答案要等下一季財報,看『問題有沒有延續』才會揭曉。",
+      wr:{grade:"底部喊逃",cls:"bad",t:"這個來源常在恐慌低點喊逃",s:"過去 3 次『快逃 / 基本面壞了』,事後 1 季內 2 次反彈",
+        body:"高聲量的恐慌,和高聲量的貪婪一樣不可靠。『大家都在逃』不是一個你查證過的理由。"},
+      aha:"反直覺的地方:讓所有人逃的那句『基本面壞掉』,其實只押在<b>一個沒被證明的假設</b>上 —— 這次是結構性、不是一次性。該做的不是跟著逃,是去查證這一件事。恐慌,也是一種沒被拆解的假設。"},
     pltr:{title:"KOL 喊單",sub:"追蹤 8 萬人的交易帳號",
       text:"$PLTR 要噴了,AI 訂單接不完,政府商業兩邊都在搶,現在不進場就來不及,目標翻倍。",
       who:"—— 追蹤 8 萬人的交易帳號,推文",
@@ -317,6 +333,7 @@
     var s=SCEN[k];
     var b=el("button","scen",'<span class="st">'+s.title+'</span><span class="ss">'+s.sub+'</span>');
     b.setAttribute("aria-pressed","false");
+    b.setAttribute("data-scen",k);
     b.addEventListener("click",function(){
       S.scen=k;$("ideaText").value=s.text;
       sc.querySelectorAll(".scen").forEach(function(x){x.setAttribute("aria-pressed","false");});
@@ -324,6 +341,13 @@
     });
     sc.appendChild(b);
   });
+  // 預設載入「反常識但合理」的情境(群體恐慌逃命),讓 demo 一開就有東西可看
+  (function(){
+    var def="panic";S.scen=def;$("ideaText").value=SCEN[def].text;
+    var chip=sc.querySelector('.scen[data-scen="'+def+'"]');
+    if(chip)chip.setAttribute("aria-pressed","true");
+    checkA();
+  })();
   $("ideaText").addEventListener("input",checkA);
   $("pre").addEventListener("input",function(){S.pre=+this.value;S.preTouched=true;$("preVal").textContent=this.value+" / 5";checkA();renderMetrics();});
   function checkA(){$("toB").disabled=!(S.scen && $("ideaText").value.trim() && S.preTouched);}
