@@ -161,7 +161,7 @@
         if(key==='believe'){F1.planHtml=planCard([
           ['進場區','現價 $203.53 到論點失效價 $'+fail+' 之上（約 '+buffer+'% 緩衝）——越接近 $'+fail+' 邊際越大'],
           ['部位','願賠 '+loss+'% → 上限 ≈ '+size.toFixed(0)+'% 資金，分 2–3 批進'],
-          ['論點失效退場','守不住雲端訂單／營收／毛利 → 減或出（≈ Bear $'+fail+'）'],
+          ['退場條件','「雲端訂單／營收／毛利」一旦守不住 → 先分批減碼；確認結構性失效再出清（跌向 Bear ≈ $'+fail+'）'],
           ['價格停損','僅防跳空/滑價，不是主要出場（主要看假設）'],
           ['時間 / 催化劑','下季財報（約 8/27）；未達預期則重評'],
           ['監控',(doubted.length?('盯：'+doubted.join('、')):'盯關鍵假設是否鬆動')]
@@ -221,10 +221,10 @@
         updWatch(dk);
         var pl=$('f2Plan');
         if(cls==='neg'){pl.innerHTML='<div class="plan"><div class="plan-h">交易計劃（草稿）<span class="tagx">你決定</span></div><div class="plan-row"><span class="pk">結論</span><span class="pv">你偏空——目前無進場計劃。設一個「什麼改變才重啟」的條件與價位（≈ '+band+'）並監控。</span></div></div>';}
-        else{pl.innerHTML=planCard([
+        else{var exitKeys=dk.length?dk:['growth','margin','multiple'],exitTxt=exitKeys.map(function(k){return TRIG[k]}).join('；');pl.innerHTML=planCard([
           ['進場區','現價 $203.53'+(cls===''?'（低於你信念價值 '+band+' 下緣，有安全邊際；越低邊際越大）':'（落在區間中段，安全邊際有限，宜更小額）')],
           ['部位','讓 Bear（−19%，$165）情境的總損失 ≤ 你能承受的最大虧損 → 反推部位，分 2–3 批'],
-          ['退場（論點失效）',flip.replace('你存疑：','')+' → 減或出'],
+          ['退場條件','下面任一前提跌破門檻就退場 —— '+exitTxt+'。先分批減碼，確認回不去再出清。'],
           ['價格停損','僅防跳空/滑價，不是主要出場'],
           ['時間 / 催化劑','下季財報（約 8/27）；未達預期則重評'],
           ['監控',(doubted.length?doubted.join('、'):'三前提任一鬆動')+'（已預選）']
