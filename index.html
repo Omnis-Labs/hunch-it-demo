@@ -66,6 +66,7 @@
         <div class="source-entry" id="f1SourceEntry"><div class="input-row"><input class="text-input" id="f1SourceInput" value="https://www.youtube.com/watch?v=ybd6x6qbIsU" readonly><button class="ghost" id="f1Load">讀取內容</button></div></div>
         <div class="loaded-source" id="f1Loaded"><b>財女珍妮 · YouTube · 2026/07/07</b><p>費半反彈，輝達就是漲不動？Kyber 延期對供應鏈衝擊大嗎</p></div>
         <div class="field"><div class="slider-top"><span>分析前，你現在有多想跟這個想法？</span><span class="v mono" id="f1PreVal">尚未填</span></div><input type="range" id="f1Pre" min="1" max="5" value="3"><div class="scale"><span>1 只是好奇</span><span>5 很想買</span></div></div>
+        <div class="field"><span class="flabel">你打算抱多久？</span><div class="chips" id="f1Horizon"><button class="chip" data-h="day" aria-pressed="false">當沖／短線</button><button class="chip" data-h="swing" aria-pressed="true">波段（數週–數月）</button><button class="chip" data-h="long" aria-pressed="false">長期（一年以上）</button></div></div>
         <div class="stage-actions"><button class="primary" id="f1ToB" disabled>拆解這個想法 →</button></div>
       </div></section>
       <section class="stage is-locked" id="f1B"><div class="stage-head"><span class="badge">B</span><div><h2>拆解論點，挑戰最重要的假設</h2></div><span class="lock">先完成 A</span></div><div class="stage-body" id="f1BBody"></div></section>
@@ -83,6 +84,7 @@
         <div class="field"><span class="flabel">你目前持有這家公司嗎？</span><div class="chips" id="f2Hold"><button class="chip" data-hold="no" aria-pressed="false">還沒持有</button><button class="chip" data-hold="yes" aria-pressed="false">已經持有</button></div></div>
         <div class="field" id="f2IntentField" hidden><span class="flabel">你現在想做什麼？</span><div class="chips" id="f2Intent"></div></div>
         <div class="field" id="f2ConfField" hidden><div class="slider-top"><span>你現在對「這是好進場點」有多少信心？</span><span class="v mono" id="f2PreVal">3 / 5</span></div><input type="range" id="f2Pre" min="1" max="5" value="3"><div class="scale"><span>1 很沒把握</span><span>5 很有把握</span></div></div>
+        <div class="field"><span class="flabel">你打算抱多久？</span><div class="chips" id="f2Horizon"><button class="chip" data-h="day" aria-pressed="false">當沖／短線</button><button class="chip" data-h="swing" aria-pressed="true">波段（數週–數月）</button><button class="chip" data-h="long" aria-pressed="false">長期（一年以上）</button></div></div>
         <div class="stage-actions"><button class="primary" id="f2ToB" disabled>看看現價已反映什麼 →</button></div>
       </div></section>
       <section class="stage is-locked" id="f2B"><div class="stage-head"><span class="badge">B</span><div><h2>目前價格已經在要求 NVIDIA 做到什麼？</h2></div><span class="lock">先完成 A</span></div><div class="stage-body" id="f2BBody"></div></section>
@@ -101,6 +103,7 @@
         <div class="field"><div class="slider-top"><span>你希望「單一主題」最多佔多少？</span><span class="v mono" id="f3LimitVal">60%</span></div><input type="range" id="f3Limit" min="30" max="90" step="5" value="60"></div>
         <div class="field"><div class="slider-top"><span>你猜你最大的單一主題曝險大概多少？</span><span class="v mono" id="f3GuessVal">30%</span></div><input type="range" id="f3Guess" min="0" max="100" step="5" value="30"><div class="scale"><span>0%</span><span>100%</span></div></div>
         <div class="field"><span class="flabel">你原本覺得這個 Portfolio？</span><div class="chips" id="f3Diversification"><button class="chip" data-div="concentrated" aria-pressed="false">蠻集中</button><button class="chip" data-div="mid" aria-pressed="false">還算平均</button><button class="chip" data-div="diversified" aria-pressed="false">很分散</button></div></div>
+        <div class="field"><span class="flabel">你打算抱多久？</span><div class="chips" id="f3Horizon"><button class="chip" data-h="day" aria-pressed="false">當沖／短線</button><button class="chip" data-h="swing" aria-pressed="true">波段（數週–數月）</button><button class="chip" data-h="long" aria-pressed="false">長期（一年以上）</button></div></div>
         <div class="stage-actions"><button class="primary" id="f3ToB" disabled>穿透 ETF、加總所有主題 →</button></div>
       </div></section>
       <section class="stage is-locked" id="f3B"><div class="stage-head"><span class="badge">B</span><div><h2>你的持倉，其實是幾個共同賭注？</h2></div><span class="lock">先完成 A</span></div><div class="stage-body" id="f3BBody"></div></section>
@@ -128,7 +131,7 @@
     function markMonitored(id){var s=$(id);if(!s||!s.classList.contains('show'))return;s.querySelectorAll('.sum').forEach(function(c){var k=c.querySelector('.k');if(k&&k.textContent.indexOf('監控')>=0){var v=c.querySelector('.v');if(v)v.textContent='已開啟'}})}
 
     /* Flow 1 — preserve original input -> decomposition -> user response */
-    var F1={source:null,loaded:false,preTouched:false,pre:3,assumptions:{},action:null,monitor:false};
+    var F1={source:null,loaded:false,preTouched:false,pre:3,assumptions:{},horizon:'swing',action:null,monitor:false};$('f1Horizon').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F1.horizon=b.dataset.h;pressGroup(this,b)});
     document.querySelectorAll('[data-source]').forEach(function(b){b.addEventListener('click',function(){F1.source=this.dataset.source;pressGroup(this.parentElement,this);$('f1SourceEntry').classList.add('show')})});
     $('f1Load').addEventListener('click',function(){if(!$('f1SourceInput').value.trim())return;F1.loaded=true;$('f1Loaded').classList.add('show');checkF1A()});(function(){var sc=document.querySelector('.source-chip[data-source]');if(sc){F1.source=sc.dataset.source;sc.setAttribute('aria-pressed','true');$('f1SourceEntry').classList.add('show');F1.loaded=true;$('f1Loaded').classList.add('show');}})();$('f1Pre').addEventListener('input',function(){F1.pre=+this.value;F1.preTouched=true;$('f1PreVal').textContent=this.value+' / 5';checkF1A()});function checkF1A(){$('f1ToB').disabled=!(F1.loaded&&F1.preTouched)}
     $('f1ToB').addEventListener('click',function(){rail('f1','B');unlock('f1B');buildF1B()});
@@ -163,15 +166,15 @@
           ['進場區','現價 $203.53 到論點失效價 $'+fail+' 之上（約 '+buffer+'% 緩衝）——越接近 $'+fail+' 邊際越大'],
           ['部位大小','你這筆最多願賠總資金的 '+loss+'%；照論點失效會跌 '+failDown+'% 回推，最多買到約 '+size.toFixed(0)+'% 資金——分 2–3 批進'],
           ['退場條件','「雲端訂單／營收／毛利」一旦守不住 → 先分批減碼；確認結構性失效再出清（跌向 Bear ≈ $'+fail+'）'],
-          ['價格停損','只是防「跳空、來不及成交」的保險，不是你主要的賣出理由（主要看假設有沒有破）'],
+          ['持有期',{day:'⚠ 當沖／短線——這工具是波段以上的論點判斷，價格噪音它不看',swing:'波段（數週–數月）',long:'長期（一年以上）'}[F1.horizon]],['價格停損',F1.horizon==='long'?'長期持有：主要看論點，價格停損可略過（只在跳空時參考）':'只是防「跳空、來不及成交」的保險，不是主要賣出理由（主要看假設有沒有破）'],
           ['時間 / 催化劑','下季財報（約 8/27）；未達預期則重評'],
           ['監控',(doubted.length?('盯：'+doubted.join('、')):'盯關鍵假設是否鬆動')]
         ],'草稿——這是你的計劃，不是買賣或時點指令。扳機留給你。');}
         else{F1.planHtml='<div class="callout '+(key==='doubt'?'warn':'neg')+'"><h3>目前無進場計劃</h3><p>'+(key==='doubt'?'你暫緩——關鍵假設未定，等下季財報驗證再看，或先小額試單。':'你放棄／看空這個論點——設一個「什麼改變才重啟」的條件與期限，別急著進場。')+'</p></div>';}}
       $('f1LossR').addEventListener('input',verdict);verdict();
       $('f1ToC').addEventListener('click',function(){rail('f1','C');unlock('f1C');buildF1C()});}
-                function buildF1C(){var body=$('f1CBody');body.innerHTML=(F1.planHtml||'')+'<div class="field"><div class="slider-top"><span>看完分析，你現在有多想買？</span><span class="v mono" id="f1PostVal">'+F1.pre+' / 5</span></div><input type="range" id="f1Post" min="1" max="5" value="'+F1.pre+'"></div><div class="field"><span class="flabel">你的決定是？</span><div class="chips" id="f1Actions"><button class="chip" data-action="buy" aria-pressed="false">現在適合買</button><button class="chip" data-action="wait" aria-pressed="false">先等更多證據</button><button class="chip" data-action="skip" aria-pressed="false">放棄這個想法</button></div></div><div class="field"><span class="flabel">哪些變化會讓你重新分析？（勾的就是下面要監控的）</span><div class="chips" id="f1Triggers"><button class="chip" aria-pressed="false">雲端客戶開始轉單</button><button class="chip" aria-pressed="false">營收／毛利預期下修</button><button class="chip" aria-pressed="false">Kyber 時程再次改變</button></div></div>'+'<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>你上面勾的，就是要監控的條件——一發生就叫你回來。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items" id="f1WatchItems"><span style="color:var(--ink-3);font-size:11px">先勾上面至少一個</span></div></div>'+'<div class="stage-actions"><button class="primary" id="f1Done" disabled>保存我的判斷</button></div>';
-      $('f1Post').addEventListener('input',function(){$('f1PostVal').textContent=this.value+' / 5'});$('f1Actions').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F1.action=b.dataset.action;pressGroup(this,b);$('f1Done').disabled=false});$('f1Triggers').addEventListener('click',function(e){var b=e.target.closest('.chip');if(b){b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');updF1Watch()}});function updF1Watch(){var sel=selectedLabels($('f1Triggers'));$('f1WatchItems').innerHTML=sel.length?sel.map(function(x){return '<span class="watch watching">'+x+'</span>'}).join(''):'<span style="color:var(--ink-3);font-size:11px">先勾上面至少一個</span>'}bindWatch(body,function(){F1.monitor=true;markMonitored('f1Summary')});$('f1Done').addEventListener('click',function(){var triggers=selectedLabels($('f1Triggers'));summary('f1Summary','你的 NVDA 判斷已保存',[['工具給的','狀態·翻轉·催化（非指令）'],['你的決定',{buy:'現在適合買',wait:'等待',skip:'放棄'}[F1.action]],['重新分析條件',triggers.length?triggers.join('／'):'尚未選擇'],['持續監控',F1.monitor?'已開啟':'尚未開啟']])})}
+                function buildF1C(){var body=$('f1CBody');body.innerHTML=(F1.planHtml||'')+'<div class="field"><div class="slider-top"><span>看完分析，你現在有多想買？</span><span class="v mono" id="f1PostVal">'+F1.pre+' / 5</span></div><input type="range" id="f1Post" min="1" max="5" value="'+F1.pre+'"></div><div class="field"><span class="flabel">你的決定是？</span><div class="chips" id="f1Actions"><button class="chip" data-action="buy" aria-pressed="false">現在適合買</button><button class="chip" data-action="wait" aria-pressed="false">先等更多證據</button><button class="chip" data-action="skip" aria-pressed="false">放棄這個想法</button></div></div><div class="field"><span class="flabel">哪些變化會讓你重新分析？（勾的就是下面要監控的）</span><div class="chips" id="f1Triggers"><button class="chip" aria-pressed="false">雲端客戶開始轉單</button><button class="chip" aria-pressed="false">營收／毛利預期下修</button><button class="chip" aria-pressed="false">Kyber 時程再次改變</button></div></div>'+'<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>你上面勾的，就是要監控的條件——一發生就叫你回來。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items" id="f1WatchItems"><span style="color:var(--ink-3);font-size:11px">先勾上面至少一個</span></div></div>'+'<div class="field" id="f1CtrReason" hidden><span class="flabel">工具偏空／暫緩，你卻要買——寫一句「你看到它沒看到的什麼」？</span><textarea id="f1CtrText" placeholder="例如：我認為市場過度反應延期消息，核心論點其實還在。"></textarea></div><div class="stage-actions"><button class="primary" id="f1Done" disabled>保存我的判斷</button></div>';
+      $('f1Post').addEventListener('input',function(){$('f1PostVal').textContent=this.value+' / 5'});$('f1Actions').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F1.action=b.dataset.action;pressGroup(this,b);$('f1Done').disabled=false;$('f1CtrReason').hidden=!(F1.action==='buy'&&F1.assumptions[1]!=='believe')});$('f1Triggers').addEventListener('click',function(e){var b=e.target.closest('.chip');if(b){b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');updF1Watch()}});function updF1Watch(){var sel=selectedLabels($('f1Triggers'));$('f1WatchItems').innerHTML=sel.length?sel.map(function(x){return '<span class="watch watching">'+x+'</span>'}).join(''):'<span style="color:var(--ink-3);font-size:11px">先勾上面至少一個</span>'}bindWatch(body,function(){F1.monitor=true;markMonitored('f1Summary')});$('f1Done').addEventListener('click',function(){var triggers=selectedLabels($('f1Triggers'));summary('f1Summary','你的 NVDA 判斷已保存',[['工具給的','狀態·翻轉·催化（非指令）'],['你的決定',{buy:'現在適合買',wait:'等待',skip:'放棄'}[F1.action]],['想跟程度 前→後',F1.pre+' → '+$('f1Post').value],['逆結論理由',(F1.action==='buy'&&F1.assumptions[1]!=='believe')?(($('f1CtrText')&&$('f1CtrText').value.trim())?'已填':'未填'):'—'],['重新分析條件',triggers.length?triggers.join('／'):'尚未選擇'],['持有期',{day:'當沖',swing:'波段',long:'長期'}[F1.horizon]],['持續監控',F1.monitor?'已開啟':'尚未開啟']])})}
 
     /* Flow 2 — data-driven, two companies (priced-high vs priced-low) + market regime */
     var F2CO={
@@ -194,7 +197,7 @@
         trig:{growth:'營收成長連兩季低於 3%',margin:'毛利跌破 35%（連低標都守不住）',foundry:'代工大單再度落空'},
         b:{hi:'$30–42（Base–Bull）',base:'$30–34（Base）',mid:'$20–30（Base–Bear 之間）',bear:'$18–20（Bear）'},cat:'下季財報 + 代工客戶進展'}
     };
-    var F2={co:null,hold:null,intent:null,pre:3,beliefs:{},quick:null,regime:'head',action:null,monitor:false};
+    var F2={co:null,hold:null,intent:null,pre:3,beliefs:{},quick:null,regime:'head',horizon:'swing',action:null,monitor:false};$('f2Horizon').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.horizon=b.dataset.h;pressGroup(this,b)});
     $('f2Cos').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.co=b.dataset.co;F2.beliefs={};F2.quick=null;pressGroup(this,b);$('f2TickerNote').textContent='已載入 '+F2CO[F2.co].name+' · '+F2.co+' · '+F2CO[F2.co].px+' · 2026/07/14';checkF2A()});
     $('f2Hold').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.hold=b.dataset.hold;pressGroup(this,b);renderF2Intent();$('f2IntentField').hidden=false;checkF2A()});
     function renderF2Intent(){var opts=F2.hold==='yes'?[['add','想加碼'],['hold','想維持'],['reduce','想減碼']]:[['enter','想進場'],['watch','想觀望']],w=$('f2Intent');w.innerHTML='';opts.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.intent=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.intent=o[0];pressGroup(w,b);$('f2ConfField').hidden=false;checkF2A()});w.appendChild(b)})}
@@ -218,6 +221,7 @@
       '<div class="decision" id="f2Reco" hidden></div><div id="f2Plan"></div>'+
       '<div class="field"><span class="flabel">看完後，你決定怎麼做？</span><div class="chips" id="f2Actions"></div></div>'+
       '<div class="field"><div class="slider-top"><span>'+confLabel+'</span><span class="v mono" id="f2PostVal">'+F2.pre+' / 5</span></div><input type="range" id="f2Post" min="1" max="5" value="'+F2.pre+'"></div>'+
+      '<div class="field" id="f2CtrReason" hidden><span class="flabel">工具偏空／避開，你卻要進場／加碼——寫一句「你看到它沒看到的什麼」？</span><textarea id="f2CtrText" placeholder="例如：我認為市場太悲觀，這家的轉機被低估。"></textarea></div>'+
       '<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>你標「存疑」的那項會排到第一顆並預選——它一鬆動就叫你回來。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items" id="f2WatchItems"></div></div>'+
       '<div class="stage-actions"><button class="primary" id="f2Done" disabled>保存目前判斷</button></div>';
       var bw=$('f2Beliefs');
@@ -225,7 +229,7 @@
         d.querySelector('.choice-row').addEventListener('click',function(e){var b=e.target.closest('.choice');if(!b)return;pressGroup(this,b);F2.beliefs[it.k]=b.dataset.v;F2.quick=null;$('f2Quick').querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed','false')});reco()});bw.appendChild(d)});
       $('f2Quick').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.quick=b.dataset.q;pressGroup(this,b);F2.beliefs={};bw.querySelectorAll('.choice').forEach(function(x){x.setAttribute('aria-pressed','false')});reco()});
       $('f2Regime').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.regime=b.dataset.r;pressGroup(this,b);reco()});
-      var aw=$('f2Actions');ACT.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.action=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.action=o[0];pressGroup(aw,b);checkF2Done()});aw.appendChild(b)});
+      var aw=$('f2Actions');ACT.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.action=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.action=o[0];pressGroup(aw,b);checkF2Done();$('f2CtrReason').hidden=!((F2.action==='buy'||F2.action==='add')&&F2.cls==='neg')});aw.appendChild(b)});
       function updWatch(dk){var ord=dk.concat(ITEMS.map(function(it){return it.k}).filter(function(k){return dk.indexOf(k)<0}));$('f2WatchItems').innerHTML=ord.map(function(k){var f=dk.indexOf(k)>=0;return '<span class="watch'+(f?' watching':'')+'">'+TRIG[k]+(f?' · 你的翻轉條件':'')+'</span>'}).join('')}
       updWatch([]);
       function reco(){var d=$('f2Reco'),lean,dk=[],believed=[],doubted=[];
@@ -240,7 +244,7 @@
         var reg=F2.regime,regTxt=reg==='head'?'目前高檔、動能轉弱（示意）——即使個股 R/R 好，也宜縮小部位、分更多批，或等回檔到進場區下緣。':(reg==='tail'?'目前研判順風，可正常執行。':'目前中性。');
         if(reg==='head'&&cls==='')status+=' · 但大盤逆風';
         var heldNote=(held&&cls==='')?'<br><b>你已持有：</b>加碼是把賭注變大——不利情境下你整體部位承受更多。':'';
-        d.className='callout '+cls;
+        F2.cls=cls;d.className='callout '+cls;
         d.innerHTML='<h3>'+status+'</h3><p><b>推導：</b>你信念的版本 → 對應價格 '+band+'；'+pos+'。<br><b>理由：</b>'+reasons+'。<br><b>翻轉條件：</b>'+flip+' → 已排進下方監控第一顆。<br><b>大盤：</b>'+regTxt+'<br><b>下一個驗證點：</b>'+C.cat+'。'+heldNote+'</p><p style="font-size:11px;opacity:.75;margin-top:9px">這是狀態與前提，不是買賣或時點指令——扳機留給你。</p>';
         d.hidden=false;updWatch(dk);
         var pl=$('f2Plan');
@@ -250,14 +254,14 @@
           ['部位大小','先想「如果它跌到失效價（'+C.fail+'）我賠多少錢還睡得著」，用那個金額回推能買多少——分 2–3 批進，不要一次全下'],
           ['大盤 regime',reg==='head'?'逆風 → 部位再打折、分更多批，或等回檔到進場區下緣':(reg==='tail'?'順風 → 可正常執行':'中性')],
           ['退場條件','下面任一前提跌破門檻就退場 —— '+exitTxt+'。先分批減碼，確認回不去再出清。'],
-          ['價格停損','只是防「跳空、來不及成交」的保險，不是你主要的出場理由'],
+          ['持有期',{day:'⚠ 當沖／短線——這工具是波段以上的判斷',swing:'波段（數週–數月）',long:'長期（一年以上）'}[F2.horizon]],['價格停損',F2.horizon==='long'?'長期：主要看前提，價格停損可略過':'只是防「跳空、來不及成交」的保險，不是你主要的出場理由'],
           ['時間 / 催化劑',C.cat],
           ['監控',(doubted.length?doubted.join('、'):'各前提任一鬆動')+'（已預選）']],'草稿——這是你的計劃，不是買賣或時點指令。扳機留給你。');}
         checkF2Done();}
       $('f2Post').addEventListener('input',function(){$('f2PostVal').textContent=this.value+' / 5'});
       function checkF2Done(){$('f2Done').disabled=!((F2.quick||Object.keys(F2.beliefs).length>=ITEMS.length)&&F2.action);}
       bindWatch(body,function(){F2.monitor=true;markMonitored('f2Summary')});
-      $('f2Done').addEventListener('click',function(){var al={add:'加碼',keep:'維持',reduce:'減碼',exit:'出清',buy:'進場',wait:'觀望',skip:'放棄'}[F2.action];summary('f2Summary','你的 '+C.tk+' 前提檢查已保存',[['公司 · 方向',C.name+'（'+(C.dir==='high'?'市場定價高':'市場定價低')+'）'],['你的信念',F2.quick?({beat:'超過',meet:'差不多',miss:'達不到'}[F2.quick]):(Object.keys(F2.beliefs).length+' 項已標')],['大盤',{tail:'順風',neutral:'中性',head:'逆風'}[F2.regime]],['你的決定',al],['進場前→後信心',F2.pre+' → '+$('f2Post').value],['持續監控',F2.monitor?'已開啟':'尚未開啟']])});}
+      $('f2Done').addEventListener('click',function(){var al={add:'加碼',keep:'維持',reduce:'減碼',exit:'出清',buy:'進場',wait:'觀望',skip:'放棄'}[F2.action];summary('f2Summary','你的 '+C.tk+' 前提檢查已保存',[['公司 · 方向',C.name+'（'+(C.dir==='high'?'市場定價高':'市場定價低')+'）'],['你的信念',F2.quick?({beat:'超過',meet:'差不多',miss:'達不到'}[F2.quick]):(Object.keys(F2.beliefs).length+' 項已標')],['大盤',{tail:'順風',neutral:'中性',head:'逆風'}[F2.regime]],['你的決定',al],['逆結論理由',((F2.action==='buy'||F2.action==='add')&&F2.cls==='neg')?(($('f2CtrText')&&$('f2CtrText').value.trim())?'已填':'未填'):'—'],['進場前→後信心',F2.pre+' → '+$('f2Post').value],['持有期',{day:'當沖',swing:'波段',long:'長期'}[F2.horizon]],['持續監控',F2.monitor?'已開啟':'尚未開啟']])});}
 
     /* Flow 3 — cash-aware (no normalization), multi-narrative + single-name look-through */
     var NARR={ai_capex:'AI 資本支出',semi:'半導體景氣',megacap:'大型科技估值',rates:'利率 / 長天期'};
@@ -284,7 +288,7 @@
       ARKK:{TSLA:10,NVDA:3}
     };
     var SAMPLE3={QQQ:50,NVDA:20,TSM:20,SMH:10};
-    var F3={holdings:{},limit:60,guess:30,guessTouched:false,div:null,exposure:null,top:null,surprise:null,action:null,monitor:false};
+    var F3={holdings:{},limit:60,guess:30,guessTouched:false,div:null,exposure:null,top:null,surprise:null,horizon:'swing',action:null,monitor:false};$('f3Horizon').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F3.horizon=b.dataset.h;pressGroup(this,b)});
     var f3pal=$('f3Palette');
     Object.keys(ASSETS).forEach(function(k){var a=ASSETS[k];var b=el('button','pchip',(a.etf?'▦ ':'')+k);b.dataset.tk=k;b.title=a.name;b.addEventListener('click',function(){addH3(k)});f3pal.appendChild(b)});
     function addH3(k){if(F3.holdings[k]==null)F3.holdings[k]=10;renderH3()}
@@ -328,7 +332,7 @@
       '<div class="field"><span class="flabel">這個結果讓你意外嗎？</span><div class="chips" id="f3Surprise"><button class="chip" data-v="yes" aria-pressed="false">很意外</button><button class="chip" data-v="some" aria-pressed="false">隱約知道，但沒算過</button><button class="chip" data-v="no" aria-pressed="false">原本就知道</button></div></div>'+
       '<div class="field"><span class="flabel">比較三個選擇，再決定</span><div class="action-grid" id="f3Actions"><button class="action-card'+(over?'':' recommended')+'" data-action="hold" aria-pressed="false"><b>維持</b><div class="metric">'+top.v.toFixed(1)+'%</div><p>保留完整上漲空間；同一主題失效時波動最大。</p></button><button class="action-card'+(over?' recommended':'')+'" data-action="reduce" aria-pressed="false"><b>'+rLabel+'</b><div class="metric">'+rMetric+'</div><p>回到你設的上限內，變現的部分留現金。</p></button><button class="action-card" data-action="rotate" aria-pressed="false"><b>換倉</b><div class="metric">跨主題</div><p>換到與此主題不相關的資產（如 XLV／TLT／現金）。</p></button></div></div>'+
       '<div class="field" id="f3Reason" hidden><span class="flabel">你逆著自己設的上限維持——留個理由？</span><textarea id="f3ReasonText" placeholder="例如：產業動能仍強，我願意在轉弱時再調整。"></textarea></div>'+watchBlock([threshold,'該主題相對動能轉弱','大盤進入高波動／弱勢環境'])+'<div class="stage-actions"><button class="primary" id="f3Done" disabled>保存 Portfolio 判斷</button></div>';
-      $('f3Surprise').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F3.surprise=b.dataset.v;pressGroup(this,b)});$('f3Actions').addEventListener('click',function(e){var b=e.target.closest('.action-card');if(!b)return;F3.action=b.dataset.action;pressGroup(this,b);$('f3Reason').hidden=!(F3.action==='hold'&&over);$('f3Done').disabled=false});bindWatch(body,function(){F3.monitor=true;markMonitored('f3Summary')});$('f3Done').addEventListener('click',function(){summary('f3Summary','你的 Portfolio 判斷已保存',[['最大主題',NARR[top.n]+' '+top.v.toFixed(1)+'%'],['你原本覺得',{concentrated:'蠻集中',mid:'還算平均',diversified:'很分散'}[F3.div]||'—'],['要動先動',best.k],['你的選擇',{hold:'維持',reduce:'減碼',rotate:'換倉'}[F3.action]],['持續監控',F3.monitor?'已開啟':'尚未開啟']])})}
+      $('f3Surprise').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F3.surprise=b.dataset.v;pressGroup(this,b)});$('f3Actions').addEventListener('click',function(e){var b=e.target.closest('.action-card');if(!b)return;F3.action=b.dataset.action;pressGroup(this,b);$('f3Reason').hidden=!(F3.action==='hold'&&over);$('f3Done').disabled=false});bindWatch(body,function(){F3.monitor=true;markMonitored('f3Summary')});$('f3Done').addEventListener('click',function(){summary('f3Summary','你的 Portfolio 判斷已保存',[['最大主題',NARR[top.n]+' '+top.v.toFixed(1)+'%'],['你原本覺得',{concentrated:'蠻集中',mid:'還算平均',diversified:'很分散'}[F3.div]||'—'],['你猜 → 實際',F3.guess+'% → '+top.v.toFixed(1)+'%'],['意外程度',{yes:'很意外',some:'隱約知道',no:'原本就知道'}[F3.surprise]||'—'],['要動先動',best.k],['你的選擇',{hold:'維持',reduce:'減碼',rotate:'換倉'}[F3.action]],['持有期',{day:'當沖',swing:'波段',long:'長期'}[F3.horizon]],['持續監控',F3.monitor?'已開啟':'尚未開啟']])})}
     renderH3();
   })();
   </script>
