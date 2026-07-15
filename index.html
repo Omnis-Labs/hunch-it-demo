@@ -117,9 +117,10 @@
     function unlock(id){var s=$(id);s.classList.remove('is-locked');var l=s.querySelector('.lock');if(l)l.remove();s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'})}
     function pressGroup(wrap,button){wrap.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed','false')});button.setAttribute('aria-pressed','true')}
     function watchBlock(items){return '<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>核心假設改變時，主動叫你回來重新分析。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items">'+items.map(function(x){return '<span class="watch">'+x+'</span>'}).join('')+'</div></div>'}
-    function bindWatch(root,onStart){var b=root.querySelector('.watchBtn');if(!b)return;b.addEventListener('click',function(){this.textContent='監控中 ✓';this.classList.add('watching');if(onStart)onStart()})}
+    function bindWatch(root,onStart){var b=root.querySelector('.watchBtn');if(!b)return;b.addEventListener('click',function(){this.textContent='監控中 ✓';this.classList.add('watching');if(onStart)onStart();markMonitored()})}
     function selectedLabels(root){return Array.from(root.querySelectorAll('[aria-pressed="true"]')).map(function(b){return b.textContent.trim()})}
     function summary(id,title,cells){var s=$(id);s.innerHTML='<h2>'+title+'</h2><p>這是你目前的判斷；監控條件改變時，可以重新打開分析。</p><div class="summary-grid">'+cells.map(function(c){return '<div class="sum"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div></div>'}).join('')+'</div>';s.classList.add('show');s.scrollIntoView({behavior:'smooth',block:'start'})}
+    function markMonitored(){document.querySelectorAll('.summary.show .sum').forEach(function(c){var k=c.querySelector('.k');if(k&&k.textContent.indexOf('監控')>=0){var v=c.querySelector('.v');if(v)v.textContent='已開啟'}})}
 
     /* Flow 1 — preserve original input -> decomposition -> user response */
     var F1={source:null,loaded:false,preTouched:false,pre:3,assumptions:{},action:null,monitor:false};
@@ -198,7 +199,7 @@
       bindWatch(body,function(){F2.monitor=true});
       $('f2Done').addEventListener('click',function(){summary('f2Summary','你的 NVDA 前提檢查已保存',[['市場隱含','成長／毛利／倍數 三前提'],['你的信念',F2.quick?({beat:'整體會超過',meet:'差不多',miss:'達不到'}[F2.quick]):(Object.keys(F2.beliefs).length+' 項已標')],['你的決定',{buy:'進場',wait:'觀望',skip:'不買'}[F2.action]],['持續監控',F2.monitor?'已開啟':'尚未開啟']])});}
 
-    /* Flow 3 — multi-ETF, multi-narrative look-through */
+    /* Flow 3 — multi-ETF, multi-narrative look-through + single-name look-through */
     var NARR={ai_capex:'AI 資本支出',semi:'半導體景氣',megacap:'大型科技估值',rates:'利率 / 長天期'};
     var ASSETS={
       QQQ:{name:'Invesco QQQ',etf:true,n:{ai_capex:30,semi:17,megacap:45,rates:20}},
@@ -212,6 +213,14 @@
       AAPL:{name:'Apple',etf:false,n:{ai_capex:15,semi:0,megacap:100,rates:20}},
       MSFT:{name:'Microsoft',etf:false,n:{ai_capex:55,semi:0,megacap:100,rates:20}},
       TSLA:{name:'Tesla',etf:false,n:{ai_capex:10,semi:0,megacap:40,rates:70}}
+    };
+    /* ETF 底層主要成分（% of ETF，示意） */
+    var ETFHOLD={
+      QQQ:{NVDA:8,MSFT:8,AAPL:7,AVGO:5,AMD:2,TSLA:3},
+      SPY:{NVDA:6,MSFT:6,AAPL:6,AVGO:2,AMD:1},
+      SMH:{NVDA:20,TSM:10,AVGO:8,AMD:5},
+      XLK:{NVDA:10,MSFT:10,AAPL:9,AVGO:4,AMD:3},
+      ARKK:{TSLA:10,NVDA:3}
     };
     var SAMPLE3={QQQ:50,NVDA:20,TSM:20,SMH:10};
     var F3={holdings:{},limit:60,guess:30,guessTouched:false,div:null,exposure:null,top:null,surprise:null,action:null,monitor:false};
@@ -231,23 +240,31 @@
     function expo3(){var t=tot3()||1,r={};Object.keys(NARR).forEach(function(n){r[n]=0});Object.keys(F3.holdings).forEach(function(k){var wsh=(+F3.holdings[k]||0)/t;Object.keys(NARR).forEach(function(n){r[n]+=wsh*(ASSETS[k].n[n]||0)})});Object.keys(r).forEach(function(n){r[n]=Math.round(r[n]*10)/10});return r}
     function ranked3(){var r=F3.exposure;return Object.keys(r).map(function(n){return{n:n,v:r[n]}}).sort(function(a,b){return b.v-a.v})}
     function contrib3(nk){var t=tot3()||1;return Object.keys(F3.holdings).map(function(k){return{k:k,v:Math.round((+F3.holdings[k]||0)/t*(ASSETS[k].n[nk]||0)*10)/10}}).filter(function(x){return x.v>0.1}).sort(function(a,b){return b.v-a.v}).map(function(x){return '<div class="exposure-row"><span class="name">'+x.k+(ASSETS[x.k].etf?'（穿透）':'')+'</span><span class="track"><span class="fill '+(ASSETS[x.k].etf?'':'actual')+'" style="width:'+Math.min(100,x.v)+'%"></span></span><span class="val">'+x.v.toFixed(1)+'%</span></div>'}).join('')}
+    function lookThrough(){var t=tot3()||1,names={};
+      Object.keys(F3.holdings).forEach(function(k){if(!ASSETS[k].etf){names[k]=names[k]||{d:0,v:0};names[k].d+=(+F3.holdings[k]||0)/t*100}});
+      Object.keys(F3.holdings).forEach(function(k){if(ASSETS[k].etf&&ETFHOLD[k]){var w=(+F3.holdings[k]||0)/t;Object.keys(ETFHOLD[k]).forEach(function(nm){names[nm]=names[nm]||{d:0,v:0};names[nm].v+=w*ETFHOLD[k][nm]})}});
+      return Object.keys(names).map(function(nm){var o=names[nm];return{nm:nm,d:Math.round(o.d*10)/10,v:Math.round(o.v*10)/10,tot:Math.round((o.d+o.v)*10)/10}}).filter(function(x){return x.tot>0.3}).sort(function(a,b){return b.tot-a.tot})}
     $('f3ToB').addEventListener('click',function(){F3.exposure=expo3();F3.top=ranked3()[0];rail('f3','B');unlock('f3B');buildF3B()});
     function buildF3B(){var top=F3.top,rk=ranked3(),actual=Math.min(100,top.v),guessPct=Math.min(100,F3.guess),over=top.v>F3.limit,body=$('f3BBody');
       var bars=rk.map(function(x){return '<div class="exposure-row"><span class="name">'+NARR[x.n]+'</span><span class="track"><span class="fill '+(x.n===top.n?'actual':'')+'" style="width:'+Math.min(100,x.v)+'%"></span></span><span class="val">'+x.v.toFixed(1)+'%</span></div>'}).join('');
+      var lt=lookThrough(),dup=lt.filter(function(x){return x.d>0&&x.v>0}).sort(function(a,b){return b.v-a.v})[0];
+      var ltRows=lt.slice(0,5).map(function(x){return '<div class="exposure-row"><span class="name">'+x.nm+(x.d>0&&x.v>0?' <span style="color:var(--neg);font-size:9px">重複</span>':'')+'</span><span class="track"><span class="fill '+(x.d>0?'actual':'')+'" style="width:'+Math.min(100,x.tot)+'%"></span></span><span class="val">'+x.tot.toFixed(1)+'%</span></div><div style="font-size:10px;color:var(--ink-3);margin:-3px 0 7px">直接 '+x.d+'%　+　透過 ETF '+x.v+'%</div>'}).join('');
       body.innerHTML='<div class="headline"><div class="help">穿透所有 ETF 與個股後，你最大的單一主題</div><div class="big">'+NARR[top.n]+' '+actual.toFixed(1)+'%</div><div class="help">跨 '+Object.keys(F3.holdings).length+' 檔持倉加總的真實曝險——任一檔的標籤都看不出來。</div><div class="compare-bars"><div><div class="bar-top"><span>你剛才猜</span><span class="mono">'+F3.guess+'%</span></div><div class="track"><div class="fill" style="width:'+guessPct+'%"></div></div></div><div><div class="bar-top"><span>穿透加總後</span><span class="mono">'+actual.toFixed(1)+'%</span></div><div class="track"><div class="fill actual" style="width:'+actual+'%"></div></div></div></div></div>'+
       '<div class="field"><span class="flabel">四個主題，你各壓了多少？</span>'+bars+'</div>'+
-      '<div class="field"><span class="flabel">「'+NARR[top.n]+'」這個賭注，是哪些持倉疊出來的？</span>'+contrib3(top.n)+'<div class="source-links"><a target="_blank" href="https://www.invesco.com/qqq-etf/en/about.html">QQQ 持倉</a><a target="_blank" href="https://www.vaneck.com/us/en/investments/semiconductor-etf-smh/">SMH 持倉</a></div></div>'+
-      '<div class="callout"><h3>你以為在選股，其實在押主題</h3><p>單檔看起來分散，但穿透 ETF 後，最大主題「'+NARR[top.n]+'」佔了 '+actual.toFixed(1)+'%。一則打到這個主題的消息，會同時影響上面這幾檔。</p></div>'+
-      '<div class="callout '+(over?'neg':'')+'"><h3>'+(over?'已超過你設定的 '+F3.limit+'% 上限':'目前低於你設定的 '+F3.limit+'% 上限')+'</h3><p>集中本身不直接等於減碼；還要看產業與大盤是否支持這個集中。</p></div>'+
+      '<div class="callout warn"><h3>這幾個主題會重疊，不能相加</h3><p>同一檔會同時算進多個主題（例：NVDA 同時是「AI 資本支出」＋「半導體」）。上面每一條是看同一批持倉的不同鏡頭，不是各自獨立、可加總的曝險——別把它們加起來當總曝險。</p></div>'+
+      '<div class="field"><span class="flabel">同一檔，你其實買了幾次？（ETF 穿透到個股）</span>'+(dup?'<div class="callout"><h3>你透過 ETF 又買了一次 '+dup.nm+'</h3><p>你直接持有 '+dup.nm+' '+dup.d+'%，但穿透你的 ETF 後還多了 '+dup.v+'%——真實 '+dup.nm+' 曝險 ≈ <b>'+dup.tot+'%</b>，比你以為的高。</p></div>':'')+ltRows+'<div class="source-links"><a target="_blank" href="https://www.invesco.com/qqq-etf/en/about.html">QQQ 持倉</a><a target="_blank" href="https://www.vaneck.com/us/en/investments/semiconductor-etf-smh/">SMH 持倉</a></div></div>'+
+      '<div class="callout '+(over?'neg':'')+'"><h3>'+(over?'最大主題已超過你設定的 '+F3.limit+'% 上限':'目前低於你設定的 '+F3.limit+'% 上限')+'</h3><p>集中本身不直接等於減碼；還要看產業與大盤是否支持這個集中。</p></div>'+
       '<div class="field"><span class="flabel">把曝險放回目前環境</span><div class="regime-grid"><div class="regime-card"><span class="state">產業動能仍強</span><b>半導體／AI 趨勢尚未反轉</b><p>資本支出與獲利預期仍有支撐。</p></div><div class="regime-card"><span class="state" style="color:var(--neg)">大盤波動升高</span><b>科技股開始更顛簸</b><p>在高檔繼續加碼會放大同一個風險。</p></div></div></div>'+
-      '<div class="decision"><div class="small">Hunch It 的判斷</div><h3>'+(over?'先不要再加，準備比較減碼與換倉':'維持，但不要再增加這個主題')+'</h3><p>目前產業動能仍支持集中；若「'+NARR[top.n]+'」超過 '+F3.limit+'% 或動能／大盤轉弱，再比較減碼與換倉。</p></div>'+
       '<div class="stage-actions"><button class="primary" id="f3ToC">比較三個選擇 →</button></div>';
       $('f3ToC').addEventListener('click',function(){rail('f3','C');unlock('f3C');buildF3C()})}
     function buildF3C(){var top=F3.top,reduced=Math.max(0,top.v-10).toFixed(1),rotated=Math.max(0,top.v-14).toFixed(1),threshold=NARR[top.n]+'曝險超過 '+F3.limit+'%',body=$('f3CBody');
-      body.innerHTML='<div class="field"><span class="flabel">這個結果讓你意外嗎？</span><div class="chips" id="f3Surprise"><button class="chip" data-v="yes" aria-pressed="false">很意外</button><button class="chip" data-v="some" aria-pressed="false">隱約知道，但沒算過</button><button class="chip" data-v="no" aria-pressed="false">原本就知道</button></div></div>'+
-      '<div class="field"><span class="flabel">比較三個選擇，再決定</span><div class="action-grid" id="f3Actions"><button class="action-card recommended" data-action="hold" aria-pressed="false"><b>維持</b><div class="metric">'+top.v.toFixed(1)+'%</div><p>保留完整上行；同一主題失效時波動最大。</p></button><button class="action-card" data-action="reduce" aria-pressed="false"><b>減碼</b><div class="metric">約 '+reduced+'%</div><p>減約 10% 並保留現金；主題續強時參與較少。</p></button><button class="action-card" data-action="rotate" aria-pressed="false"><b>換倉</b><div class="metric">約 '+rotated+'%</div><p>把重疊部位換到別的主題，降低單一敘事曝險。</p></button></div></div>'+
+      var best=null,alt=null;Object.keys(F3.holdings).forEach(function(k){var n=ASSETS[k].n[top.n]||0;if(!best||n>best.n)best={k:k,n:n};if(ASSETS[k].etf&&(!alt||n>alt.n))alt={k:k,n:n}});
+      var trim='壓「'+NARR[top.n]+'」最直接的是 <b>'+best.k+'</b>（每 1% 權重就貢獻 '+best.n+'% 曝險）'+(alt&&alt.k!==best.k?'；若想保留單一持股的信心，改減 ETF <b>'+alt.k+'</b> 也能覆蓋':'')+'。';
+      body.innerHTML='<div class="callout"><h3>要減，先減哪一檔？</h3><p>'+trim+'</p></div>'+
+      '<div class="field"><span class="flabel">這個結果讓你意外嗎？</span><div class="chips" id="f3Surprise"><button class="chip" data-v="yes" aria-pressed="false">很意外</button><button class="chip" data-v="some" aria-pressed="false">隱約知道，但沒算過</button><button class="chip" data-v="no" aria-pressed="false">原本就知道</button></div></div>'+
+      '<div class="field"><span class="flabel">比較三個選擇，再決定</span><div class="action-grid" id="f3Actions"><button class="action-card recommended" data-action="hold" aria-pressed="false"><b>維持</b><div class="metric">'+top.v.toFixed(1)+'%</div><p>保留完整上行；同一主題失效時波動最大。</p></button><button class="action-card" data-action="reduce" aria-pressed="false"><b>減碼 '+best.k+'</b><div class="metric">約 '+reduced+'%</div><p>減約 10% 並保留現金；主題續強時參與較少。</p></button><button class="action-card" data-action="rotate" aria-pressed="false"><b>換倉</b><div class="metric">約 '+rotated+'%</div><p>把重疊部位換到別的主題，降低單一敘事曝險。</p></button></div></div>'+
       '<div class="field" id="f3Reason" hidden><span class="flabel">你為什麼願意繼續承擔這個集中？</span><textarea id="f3ReasonText" placeholder="例如：產業動能仍強，我願意在轉弱時再調整。"></textarea></div>'+watchBlock([threshold,'該主題相對動能轉弱','大盤進入高波動／弱勢環境'])+'<div class="stage-actions"><button class="primary" id="f3Done" disabled>保存 Portfolio 判斷</button></div>';
-      $('f3Surprise').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F3.surprise=b.dataset.v;pressGroup(this,b)});$('f3Actions').addEventListener('click',function(e){var b=e.target.closest('.action-card');if(!b)return;F3.action=b.dataset.action;pressGroup(this,b);$('f3Reason').hidden=F3.action!=='hold';$('f3Done').disabled=false});bindWatch(body,function(){F3.monitor=true});$('f3Done').addEventListener('click',function(){summary('f3Summary','你的 Portfolio 判斷已保存',[['最大主題',NARR[top.n]+' '+top.v.toFixed(1)+'%'],['重新分析門檻',threshold],['你的選擇',{hold:'維持',reduce:'減碼',rotate:'換倉'}[F3.action]],['持續監控',F3.monitor?'已開啟':'尚未開啟']])})}
+      $('f3Surprise').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F3.surprise=b.dataset.v;pressGroup(this,b)});$('f3Actions').addEventListener('click',function(e){var b=e.target.closest('.action-card');if(!b)return;F3.action=b.dataset.action;pressGroup(this,b);$('f3Reason').hidden=F3.action!=='hold';$('f3Done').disabled=false});bindWatch(body,function(){F3.monitor=true});$('f3Done').addEventListener('click',function(){summary('f3Summary','你的 Portfolio 判斷已保存',[['最大主題',NARR[top.n]+' '+top.v.toFixed(1)+'%'],['要減先減',best.k],['你的選擇',{hold:'維持',reduce:'減碼',rotate:'換倉'}[F3.action]],['持續監控',F3.monitor?'已開啟':'尚未開啟']])})}
     renderH3();
   })();
   </script>
