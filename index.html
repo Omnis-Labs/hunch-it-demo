@@ -1,172 +1,162 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hunch It — 原型 Demo 總覽</title>
-<style>
-  :root{
-    --bg:#E7EBEA; --surface:#FCFEFD; --surface-2:#EEF3F1; --raise:#FFFFFF;
-    --border:#D0D9D6; --border-strong:#B7C4C0;
-    --ink:#14201E; --ink-2:#566A65; --ink-3:#84948F;
-    --accent:#0B6E75; --accent-2:#0A565C; --accent-ink:#FFFFFF; --accent-wash:#DDEDEC;
-    --warn:#9C6B15; --warn-wash:#F1E6CE;
-    --shadow:0 1px 2px rgba(18,32,30,.05), 0 8px 28px -14px rgba(18,32,30,.22);
-    --shadow-lg:0 2px 4px rgba(18,32,30,.06), 0 22px 46px -20px rgba(18,32,30,.3);
-    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
-    --font-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
-    --r:16px; --r-sm:10px;
-  }
-  @media (prefers-color-scheme:dark){
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hunch It · 三個決策場景</title>
+  <style>
     :root{
-      --bg:#0B110F; --surface:#121A18; --surface-2:#0F1614; --raise:#17211E;
-      --border:#26332F; --border-strong:#33433E; --ink:#E7EEEB; --ink-2:#94A5A0; --ink-3:#66756F;
-      --accent:#3BB6AF; --accent-2:#52C9C1; --accent-ink:#06201F; --accent-wash:#13302E;
-      --warn:#DDA84C; --warn-wash:#332818;
-      --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
-      --shadow-lg:0 2px 6px rgba(0,0,0,.5), 0 26px 52px -22px rgba(0,0,0,.7);
+      --bg:#E7EBEA;--surface:#FCFEFD;--surface-2:#EEF3F1;--raise:#FFFFFF;
+      --border:#D0D9D6;--border-strong:#B7C4C0;--ink:#14201E;--ink-2:#566A65;--ink-3:#758782;
+      --accent:#0B6E75;--accent-2:#0A565C;--accent-ink:#FFFFFF;--accent-wash:#DDEDEC;
+      --pos:#1F7A4D;--pos-wash:#DCEDE2;--neg:#BE452A;--neg-wash:#F5E1D9;--warn:#8A5B0D;--warn-wash:#F1E6CE;
+      --font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+      --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--r:16px;--r-sm:10px;
+      --shadow:0 1px 2px rgba(18,32,30,.05),0 7px 14px -12px rgba(18,32,30,.28);
     }
-  }
-  :root[data-theme="light"]{
-    --bg:#E7EBEA; --surface:#FCFEFD; --surface-2:#EEF3F1; --raise:#FFFFFF; --border:#D0D9D6; --border-strong:#B7C4C0;
-    --ink:#14201E; --ink-2:#566A65; --ink-3:#84948F; --accent:#0B6E75; --accent-2:#0A565C; --accent-ink:#FFFFFF; --accent-wash:#DDEDEC;
-    --warn:#9C6B15; --warn-wash:#F1E6CE;
-    --shadow:0 1px 2px rgba(18,32,30,.05), 0 8px 28px -14px rgba(18,32,30,.22);
-    --shadow-lg:0 2px 4px rgba(18,32,30,.06), 0 22px 46px -20px rgba(18,32,30,.3);
-  }
-  :root[data-theme="dark"]{
-    --bg:#0B110F; --surface:#121A18; --surface-2:#0F1614; --raise:#17211E; --border:#26332F; --border-strong:#33433E;
-    --ink:#E7EEEB; --ink-2:#94A5A0; --ink-3:#66756F; --accent:#3BB6AF; --accent-2:#52C9C1; --accent-ink:#06201F; --accent-wash:#13302E;
-    --warn:#DDA84C; --warn-wash:#332818;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
-    --shadow-lg:0 2px 6px rgba(0,0,0,.5), 0 26px 52px -22px rgba(0,0,0,.7);
-  }
-  *{box-sizing:border-box} html,body{margin:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--font-sans);line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh}
-  a{color:inherit;text-decoration:none}
-
-  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px clamp(16px,4vw,32px);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
-  .brand{display:flex;align-items:baseline;gap:9px;font-weight:700;letter-spacing:-.01em}
-  .brand .mk{color:var(--accent)}
-  .tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-wash);padding:3px 8px;border-radius:100px}
-  .spacer{flex:1}
-  .ghost-btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-size:13px;padding:7px 12px;border-radius:100px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
-  .ghost-btn:hover{border-color:var(--accent);color:var(--accent)}
-
-  .wrap{max-width:920px;margin:0 auto;padding:clamp(28px,5vw,56px) clamp(16px,4vw,32px) 80px}
-  .hero{margin-bottom:38px}
-  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
-  .hero h1{font-size:clamp(1.9rem,5vw,2.9rem);line-height:1.1;letter-spacing:-.025em;margin:0 0 14px;text-wrap:balance;font-weight:760}
-  .hero p{color:var(--ink-2);font-size:1.05rem;max-width:62ch;margin:0}
-  .note{margin-top:16px;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--warn);background:var(--warn-wash);border:1px solid color-mix(in srgb,var(--warn) 26%,transparent);padding:6px 11px;border-radius:100px}
-  .note::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--warn)}
-
-  .sec{margin-top:36px}
-  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
-  .sec-head h2{font-size:1.15rem;margin:0;letter-spacing:-.01em}
-  .sec-head .sh-sub{font-size:12.5px;color:var(--ink-3)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
-
-  .card{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow);transition:transform .16s cubic-bezier(.2,.7,.2,1),border-color .16s,box-shadow .16s}
-  .card:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:var(--shadow-lg)}
-  .card .ct{display:flex;align-items:center;gap:9px;font-size:1.06rem;font-weight:720;letter-spacing:-.01em}
-  .card .pill{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:100px;background:var(--surface-2);color:var(--ink-3);border:1px solid var(--border)}
-  .card .pill.new{background:var(--accent-wash);color:var(--accent);border-color:transparent}
-  .card .cd{font-size:13.5px;color:var(--ink-2);line-height:1.5;flex:1}
-  .card .go{font-size:13px;font-weight:600;color:var(--accent);display:inline-flex;align-items:center;gap:6px;margin-top:2px}
-  .card .go svg{width:15px;height:15px}
-  .card.featured{border-color:color-mix(in srgb,var(--accent) 40%,transparent);background:linear-gradient(180deg,var(--accent-wash),var(--surface))}
-  .card.featured .ct{color:var(--accent)}
-  .card.wide{grid-column:1/-1}
-
-  footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--border);font-size:12.5px;color:var(--ink-3);line-height:1.6}
-  footer b{color:var(--ink-2)}
-  :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
-  @media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important}}
-</style>
+    :root[data-theme="dark"]{--bg:#0B110F;--surface:#121A18;--surface-2:#0F1614;--raise:#17211E;--border:#26332F;--border-strong:#33433E;--ink:#E7EEEB;--ink-2:#A9B6B2;--ink-3:#7E8D88;--accent:#3BB6AF;--accent-2:#52C9C1;--accent-ink:#06201F;--accent-wash:#13302E;--pos:#4FC98A;--pos-wash:#123324;--neg:#E9805C;--neg-wash:#3A211A;--warn:#DDA84C;--warn-wash:#332818;--shadow:0 1px 2px rgba(0,0,0,.4)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.55;-webkit-font-smoothing:antialiased}button,input,textarea{font:inherit}button{color:inherit}.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px clamp(16px,4vw,32px);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+    .brand{border:0;background:none;font-weight:750;font-size:16px;cursor:pointer;padding:6px 0}.brand .mk{color:var(--accent)}.tag{font-size:11px;font-weight:650;color:var(--accent);background:var(--accent-wash);padding:3px 8px;border-radius:100px}.spacer{flex:1}
+    .ghost,.primary{border:1px solid var(--border-strong);background:var(--surface);border-radius:100px;min-height:42px;padding:9px 15px;cursor:pointer;font-weight:650;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px}.ghost:hover{border-color:var(--accent);color:var(--accent)}.primary{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);padding:11px 20px}.primary:hover{background:var(--accent-2)}.primary:disabled{opacity:.38;cursor:not-allowed}.icon-btn{min-width:42px;padding-inline:12px}
+    .shell{max-width:920px;margin:0 auto;padding:clamp(24px,5vw,52px) clamp(16px,4vw,32px) 120px}.view{display:none}.view.active{display:block;animation:reveal .26s cubic-bezier(.22,1,.36,1) both}@keyframes reveal{from{opacity:.72;transform:translateY(7px)}to{opacity:1;transform:none}}
+    .home-head{text-align:center;margin:18px auto 30px;max-width:650px}.home-head h1,.lede h1{font-size:clamp(1.85rem,4.5vw,2.7rem);line-height:1.12;letter-spacing:-.028em;text-wrap:balance;margin:0 0 12px}.home-head p,.lede p{margin:0;color:var(--ink-2);font-size:15px}.doors{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.door{text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:var(--r);padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:11px;min-height:230px;box-shadow:var(--shadow);transition:transform .16s,border-color .16s}.door:hover{transform:translateY(-3px);border-color:var(--accent)}.door .num{font:700 11px/1 var(--mono);color:var(--ink-3)}.door .ico{width:42px;height:42px;border-radius:12px;background:var(--accent-wash);color:var(--accent);display:grid;place-items:center;font-weight:800}.door h2{font-size:18px;line-height:1.3;margin:0}.door p{font-size:13px;color:var(--ink-2);margin:0;flex:1}.door .go{color:var(--accent);font-weight:700;font-size:13px}
+    .back{border:0;background:none;padding:4px 0;margin-bottom:18px;color:var(--ink-2);cursor:pointer}.back:hover{color:var(--accent)}.lede{margin-bottom:25px}.lede .kicker{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:7px}.lede .note{font-size:12px;margin-top:9px;color:var(--ink-3)}
+    .rail{display:flex;gap:9px;margin:0 0 18px}.rail .step{flex:1;display:flex;flex-direction:column;gap:7px}.rail .bar{height:4px;border-radius:100px;background:var(--border)}.rail .lab{font-size:11px;color:var(--ink-3)}.rail .step.active .bar{background:var(--accent)}.rail .step.done .bar{background:color-mix(in srgb,var(--accent) 55%,transparent)}.rail .step.active .lab,.rail .step.done .lab{color:var(--ink-2)}
+    .stage{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden;scroll-margin-top:84px}.stage.is-locked{opacity:.48}.stage.is-locked .stage-body{display:none}.stage-head{display:flex;align-items:center;gap:12px;padding:16px 20px}.badge{width:29px;height:29px;border-radius:8px;background:var(--accent-wash);color:var(--accent);display:grid;place-items:center;font:750 13px/1 var(--mono);flex:none}.stage-head h2{font-size:17px;margin:0;letter-spacing:-.01em}.stage-head .sub{font-size:12px;color:var(--ink-3);margin-top:2px}.lock{margin-left:auto;font-size:11px;color:var(--ink-3)}.stage-body{padding:0 20px 20px}.field{margin-top:16px}.flabel{display:block;font-size:13px;font-weight:700;margin-bottom:8px}.help{font-size:12px;color:var(--ink-3);margin:-4px 0 9px}.chips,.source-types,.palette{display:flex;flex-wrap:wrap;gap:8px}.chip,.source-chip,.pchip{border:1px solid var(--border-strong);background:var(--raise);border-radius:100px;padding:9px 13px;cursor:pointer;font-size:13px}.chip:hover,.source-chip:hover,.pchip:hover{border-color:var(--accent)}.chip[aria-pressed="true"],.source-chip[aria-pressed="true"],.pchip.added{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+    textarea,.text-input,.num-input{width:100%;border:1px solid var(--border);background:var(--raise);color:var(--ink);border-radius:var(--r-sm);padding:12px 13px;outline:none}.text-input{min-height:44px}.text-input::placeholder,textarea::placeholder{color:var(--ink-3)}textarea{min-height:96px;resize:vertical}.input-row{display:flex;gap:8px}.input-row .text-input{flex:1}.source-entry{display:none;margin-top:10px}.source-entry.show{display:block}.loaded-source{display:none;margin-top:12px;background:var(--surface-2);border-radius:var(--r-sm);padding:14px}.loaded-source.show{display:block}.loaded-source b{display:block;margin-bottom:4px}.loaded-source p{font-size:12px;color:var(--ink-2);margin:0}
+    .slider-top{display:flex;justify-content:space-between;gap:12px;font-size:13px}.slider-top .v{font-weight:750;color:var(--accent)}input[type="range"]{width:100%;accent-color:var(--accent);margin:10px 0 3px}.scale{display:flex;justify-content:space-between;color:var(--ink-3);font-size:10px}.stage-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.divider{height:1px;background:var(--border);margin:18px 0}
+    .quote{background:var(--surface-2);border-radius:var(--r-sm);padding:14px 16px;font-size:14px}.quote .who{display:block;color:var(--ink-3);font-size:11px;margin-top:7px}.blocks{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.block{background:var(--raise);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px}.block .label{font-size:10px;font-weight:750;color:var(--accent);margin-bottom:6px}.block p{font-size:12px;margin:0}.editable{outline:none;border-radius:6px;padding:3px}.editable:hover,.editable:focus{background:var(--surface-2)}
+    .assumptions{display:flex;flex-direction:column;gap:9px}.assumption{border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;background:var(--raise)}.assumption.key{background:var(--warn-wash)}.assumption b{font-size:13px}.choice-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.choice{border:1px solid var(--border);border-radius:100px;background:var(--surface);padding:6px 10px;font-size:11px;cursor:pointer}.choice[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+    .evidence-list{display:flex;flex-direction:column;gap:8px}.evidence{display:grid;grid-template-columns:25px 1fr;gap:9px;padding:11px 0;border-top:1px solid var(--border)}.evidence:first-child{border-top:0}.evidence .n{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:var(--accent-wash);color:var(--accent);font:750 10px/1 var(--mono)}.evidence b{font-size:13px}.evidence p{font-size:12px;color:var(--ink-2);margin:2px 0 0}.callout{background:var(--accent-wash);border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border));border-radius:var(--r-sm);padding:14px 16px;font-size:14px;margin-top:12px}.callout.warn{background:var(--warn-wash);border-color:color-mix(in srgb,var(--warn) 25%,var(--border))}.callout.neg{background:var(--neg-wash);border-color:color-mix(in srgb,var(--neg) 25%,var(--border))}.callout h3{font-size:15px;margin:0 0 5px}.callout p{margin:0;font-size:12px;color:var(--ink-2)}
+    .source-links{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.source-links a{background:var(--surface-2);color:var(--ink-2);border-radius:100px;padding:5px 9px;font-size:10px;text-decoration:none}.source-links a:hover{text-decoration:underline}.decision{background:var(--accent);color:var(--accent-ink);border-radius:var(--r-sm);padding:16px;margin-top:14px}.decision .small{font-size:11px;font-weight:700}.decision h3{font-size:24px;line-height:1.2;margin:4px 0 7px}.decision p{margin:0;font-size:13px}
+    .monitor{background:var(--surface-2);border-radius:var(--r-sm);padding:14px;margin-top:12px}.monitor-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.monitor h3{font-size:14px;margin:0 0 3px}.monitor p{font-size:11px;color:var(--ink-2);margin:0}.watch-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.watch{background:var(--raise);border-radius:8px;padding:7px 9px;font-size:11px}.watching{background:var(--pos-wash)!important;color:var(--pos)!important;border-color:var(--pos)!important}
+    .imp-rows{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}.imp-row{background:var(--raise);border-top:1px solid var(--border)}.imp-row:first-child{border-top:0}.imp-line{display:grid;grid-template-columns:1fr auto 28px;gap:8px;align-items:center;padding:12px}.imp-k{font-size:12px;color:var(--ink-2)}.imp-v{font-size:13px;font-weight:750}.q{width:25px;height:25px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer}.imp-hint{display:none;padding:0 12px 12px;color:var(--ink-2);font-size:11px}.imp-hint.show{display:block}.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mini{background:var(--surface-2);border-radius:var(--r-sm);padding:13px}.mini b{display:block;font-size:12px;margin-bottom:4px}.mini p{margin:0;color:var(--ink-2);font-size:11px}
+    .scenario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.scenario{border:1px solid var(--border);border-radius:var(--r-sm);background:var(--raise);padding:14px;text-align:left;cursor:pointer}.scenario[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.scenario .sl{font-size:11px;color:var(--ink-3)}.scenario .price{font:750 19px/1.3 var(--mono);margin:4px 0}.scenario .ret{font:700 12px/1.3 var(--mono)}.scenario .desc{font-size:10px;color:var(--ink-2);margin-top:6px}.scenario-detail{display:none;margin-top:10px;background:var(--surface-2);border-radius:var(--r-sm);padding:13px}.scenario-detail.show{display:block}.scenario-detail b{font-size:13px}.scenario-detail p{font-size:11px;color:var(--ink-2);margin:4px 0 0}
+    .holdings{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}.hrow{display:grid;grid-template-columns:1fr 100px 32px;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--border);background:var(--raise)}.hrow:first-child{border-top:0}.hrow .hn{font-size:13px;font-weight:650}.hrow .tk{font:650 10px/1 var(--mono);color:var(--ink-3);margin-left:7px}.win{display:flex;align-items:center}.win input{width:72px;border:1px solid var(--border);background:var(--surface);color:var(--ink);border-radius:7px;padding:6px 7px;text-align:right}.win .pc{font-size:12px;margin-left:3px}.rm{border:0;background:none;color:var(--ink-3);font-size:20px;cursor:pointer}.empty{padding:18px;color:var(--ink-3);font-size:12px}.total-line{display:flex;justify-content:space-between;margin-top:8px;color:var(--ink-2);font-size:11px}.total-line .warn{color:var(--neg)}
+    .headline{background:var(--surface-2);border-radius:var(--r-sm);padding:16px}.headline .big{font:800 34px/1.1 var(--mono);color:var(--neg);margin:5px 0}.compare-bars{display:grid;gap:8px;margin-top:13px}.bar-top{display:flex;justify-content:space-between;font-size:11px}.track{height:11px;background:var(--raise);border:1px solid var(--border);border-radius:100px;overflow:hidden}.fill{display:block;height:100%;border-radius:100px;background:var(--ink-3)}.fill.actual{background:var(--neg)}.exposure-row{display:grid;grid-template-columns:115px 1fr 55px;gap:10px;align-items:center;margin-top:10px}.exposure-row .name{font-size:11px}.exposure-row .val{text-align:right;font:700 11px/1 var(--mono)}
+    .regime-grid,.action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.regime-card,.action-card{border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;background:var(--raise)}.regime-card .state{font-size:10px;font-weight:750;color:var(--accent)}.regime-card b{display:block;font-size:12px;margin:4px 0}.regime-card p{margin:0;color:var(--ink-2);font-size:10px}.action-grid{grid-template-columns:repeat(3,1fr)}.action-card{cursor:pointer;text-align:left}.action-card[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-wash)}.action-card.recommended:before{content:"目前建議";display:inline-block;background:var(--accent);color:var(--accent-ink);border-radius:100px;padding:2px 6px;font-size:9px;font-weight:700;margin-bottom:7px}.action-card b{display:block;font-size:13px}.action-card .metric{font:750 17px/1.3 var(--mono);margin:5px 0}.action-card p{font-size:10px;color:var(--ink-2);margin:0}
+    .summary{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:16px}.summary.show{display:block}.summary h2{font-size:18px;margin:0 0 5px}.summary p{font-size:12px;color:var(--ink-2);margin:0}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}.sum{background:var(--surface-2);border-radius:var(--r-sm);padding:12px}.sum .k{font-size:10px;color:var(--ink-3)}.sum .v{font-size:13px;font-weight:700;margin-top:3px}.fine{font-size:10px;color:var(--ink-3);margin-top:14px}
+    :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}@media(max-width:720px){.doors,.blocks,.scenario-grid,.action-grid{grid-template-columns:1fr}.split,.regime-grid{grid-template-columns:1fr}.door{min-height:auto}.rail .lab{font-size:9px}.input-row{flex-direction:column}.monitor-head{align-items:flex-start;flex-direction:column}.summary-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.stage-head,.stage-body{padding-left:15px;padding-right:15px}.shell{padding-top:22px}.hrow{grid-template-columns:1fr 90px 25px}.exposure-row{grid-template-columns:90px 1fr 45px}}@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}html{scroll-behavior:auto}}
+  </style>
 </head>
 <body>
-<script>(function(){try{var t=localStorage.getItem("hi-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
-<header class="topbar">
-  <div class="brand"><span>Hunch It<span class="mk">.</span></span></div>
-  <span class="tag">原型 Demo</span>
-  <span class="spacer"></span>
-  <button class="ghost-btn" id="themeBtn"><span id="themeIcon">◐</span><span id="themeLbl">深色</span></button>
-</header>
+  <header class="topbar">
+    <button class="brand" data-home>Hunch It<span class="mk">.</span></button>
+    <span class="tag" id="contextTag">三個決策場景</span><span class="spacer"></span>
+    <button class="ghost icon-btn" id="themeBtn"><span id="themeIcon">◐</span><span id="themeLabel">深色</span></button>
+  </header>
+  <main class="shell">
+    <section class="view active" id="home">
+      <div class="home-head"><h1>你現在卡在哪一種決定？</h1><p>選一個最接近你現在狀況的入口。你會先提供自己的情境，Hunch It 才開始分析。</p></div>
+      <div class="doors">
+        <button class="door" data-open="flow1"><span class="num">FLOW 1</span><span class="ico">↗</span><h2>外來想法能不能變成我的交易？</h2><p>帶入 KOL、朋友或社群內容，拆開證據與假設，再形成自己的買／等／放棄判斷。</p><span class="go">帶入一個想法 →</span></button>
+        <button class="door" data-open="flow2"><span class="num">FLOW 2</span><span class="ico">$</span><h2>好公司現在是不是好交易？</h2><p>輸入你喜歡的公司與目前意圖，檢查現價已反映多少期待，以及上行是否值得風險。</p><span class="go">判斷目前價格 →</span></button>
+        <button class="door" data-open="flow3"><span class="num">FLOW 3</span><span class="ico">◎</span><h2>我的 Portfolio 實際上在押什麼？</h2><p>輸入持倉與權重，穿透 ETF、共同假設與市場環境，再比較維持、減碼與換倉。</p><span class="go">檢查我的持倉 →</span></button>
+      </div>
+    </section>
 
-<main class="wrap">
-  <section class="hero">
-    <div class="eyebrow">Omnis Labs · Hunch It</div>
-    <h1>互動原型總覽</h1>
-    <p>純靜態、單一 HTML、無後端、無外部請求。點任一張卡片直接在瀏覽器打開。分成兩組:一組是完整的「判斷流程 Agent」原型,另一組是這一輪為了驗證「哪條 flow 對用戶最重要」而做的假說驗證原型。</p>
-    <div class="note">全部為候選原型,非產品決策;示意數字非即時行情,不構成投資建議</div>
-  </section>
+    <section class="view" id="flow1">
+      <button class="back" data-home>← 回到三個場景</button>
+      <div class="lede"><div class="kicker">外來想法 → 我的判斷</div><h1>別人推的這個想法，到底值不值得跟？</h1><p>先帶入你真的看到的內容。Hunch It 會拆解它最需要成立的假設，再形成明確決定。</p></div>
+      <div class="rail" data-rail="f1"><div class="step active" data-step="A"><div class="bar"></div><div class="lab">A　帶入想法</div></div><div class="step" data-step="B"><div class="bar"></div><div class="lab">B　拆解與挑戰</div></div><div class="step" data-step="C"><div class="bar"></div><div class="lab">C　形成我的判斷</div></div></div>
+      <section class="stage" id="f1A"><div class="stage-head"><span class="badge">A</span><div><h2>你是從哪裡看到這個想法？</h2><div class="sub">選擇輸入方式，再帶入內容</div></div></div><div class="stage-body">
+        <div class="field"><span class="flabel">選擇你剛看到的內容</span><div class="source-types"><button class="source-chip" data-source="jenny" aria-pressed="false">財女珍妮 · NVDA／Kyber</button></div></div>
+        <div class="source-entry" id="f1SourceEntry"><div class="input-row"><input class="text-input" id="f1SourceInput" value="https://www.youtube.com/watch?v=ybd6x6qbIsU" readonly><button class="ghost" id="f1Load">讀取內容</button></div></div>
+        <div class="loaded-source" id="f1Loaded"><b>財女珍妮 · YouTube · 2026/07/07</b><p>費半反彈，輝達就是漲不動？Kyber 延期對供應鏈衝擊大嗎</p></div>
+        <div class="field"><div class="slider-top"><span>分析前，你現在有多想跟這個想法？</span><span class="v mono" id="f1PreVal">尚未填</span></div><input type="range" id="f1Pre" min="1" max="5" value="3"><div class="scale"><span>1 只是好奇</span><span>5 很想買</span></div></div>
+        <div class="stage-actions"><button class="primary" id="f1ToB" disabled>拆解這個想法 →</button></div>
+      </div></section>
+      <section class="stage is-locked" id="f1B"><div class="stage-head"><span class="badge">B</span><div><h2>拆解論點，挑戰最重要的假設</h2></div><span class="lock">先完成 A</span></div><div class="stage-body" id="f1BBody"></div></section>
+      <section class="stage is-locked" id="f1C"><div class="stage-head"><span class="badge">C</span><div><h2>形成你自己的判斷</h2></div><span class="lock">先完成 B</span></div><div class="stage-body" id="f1CBody"></div></section>
+      <section class="summary" id="f1Summary"></section>
+    </section>
 
-  <section class="sec">
-    <div class="sec-head"><h2>整合原型</h2><span class="sh-sub">三條 flow 收斂進同一支 app · 精修版</span></div>
-    <div class="grid">
-      <a class="card featured wide" href="three-flow.html">
-        <div class="ct">三個決策場景 <span class="pill new">精修版</span></div>
-        <div class="cd">「你現在卡在哪一種決定?」— 一支 app 收斂三條 flow:外來想法能不能變成交易、好公司現在是不是好交易、我的組合實際在押什麼。每條走 A→B→C 完整流程,含真實來源與監控。<b>最新、最完整的一支。</b></div>
-        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-      </a>
-    </div>
-  </section>
+    <section class="view" id="flow2">
+      <button class="back" data-home>← 回到三個場景</button>
+      <div class="lede"><div class="kicker">好公司 → 現在的交易</div><h1>我喜歡 NVDA，但目前價格值得買嗎？</h1><p>先說你現在的持有狀態與意圖，再看現價已經要求公司做到什麼，以及你承擔的下行與剩餘上行。</p></div>
+      <div class="rail" data-rail="f2"><div class="step active" data-step="A"><div class="bar"></div><div class="lab">A　公司與目前意圖</div></div><div class="step" data-step="B"><div class="bar"></div><div class="lab">B　現價反映的期待</div></div><div class="step" data-step="C"><div class="bar"></div><div class="lab">C　風險與上行</div></div></div>
+      <section class="stage" id="f2A"><div class="stage-head"><span class="badge">A</span><div><h2>你正在考慮哪家公司？</h2><div class="sub">帶入公司、持有狀態與現在想做的事</div></div></div><div class="stage-body">
+        <div class="field"><span class="flabel">選擇或輸入公司</span><div class="chips"><button class="chip" id="f2Nvda" aria-pressed="false">NVIDIA <span class="mono">NVDA</span></button></div><div class="input-row" style="margin-top:8px"><input class="text-input" id="f2Ticker" placeholder="輸入 NVDA 或 NVIDIA"><button class="ghost" id="f2TickerBtn">載入</button></div><div class="help" id="f2TickerNote"></div></div>
+        <div class="field"><span class="flabel">你目前持有 NVDA 嗎？</span><div class="chips" id="f2Hold"><button class="chip" data-hold="no" aria-pressed="false">還沒持有</button><button class="chip" data-hold="yes" aria-pressed="false">已經持有</button></div></div>
+        <div class="field" id="f2IntentField" hidden><span class="flabel">你現在想做什麼？</span><div class="chips" id="f2Intent"></div></div>
+        <div class="field" id="f2ConfField" hidden><div class="slider-top"><span>你現在對「這是好進場點」有多少信心？</span><span class="v mono" id="f2PreVal">3 / 5</span></div><input type="range" id="f2Pre" min="1" max="5" value="3"><div class="scale"><span>1 很沒把握</span><span>5 很有把握</span></div></div>
+        <div class="stage-actions"><button class="primary" id="f2ToB" disabled>看看現價已反映什麼 →</button></div>
+      </div></section>
+      <section class="stage is-locked" id="f2B"><div class="stage-head"><span class="badge">B</span><div><h2>目前價格已經在要求 NVIDIA 做到什麼？</h2></div><span class="lock">先完成 A</span></div><div class="stage-body" id="f2BBody"></div></section>
+      <section class="stage is-locked" id="f2C"><div class="stage-head"><span class="badge">C</span><div><h2>從現在買，承擔什麼風險與上行？</h2></div><span class="lock">先完成 B</span></div><div class="stage-body" id="f2CBody"></div></section>
+      <section class="summary" id="f2Summary"></section>
+    </section>
 
-  <section class="sec">
-    <div class="sec-head"><h2>假說驗證原型組</h2><span class="sh-sub">拆成可各自獨立測試的核心揭露 · 內建行為指標收集</span></div>
-    <div class="grid">
-      <a class="card featured wide" href="triage.html">
-        <div class="ct">三扇門入口 <span class="pill new">Phase 0</span></div>
-        <div class="cd">「你現在手上有什麼?」— 一個別人的想法 / 一家你在看的公司 / 一整個組合。量哪扇門最多人選、選了想不想用;三扇門後面各自接到下方的深度原型。<b>建議從這裡開始。</b></div>
-        <span class="go">打開入口 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-      </a>
-      <a class="card" href="idea-validator.html">
-        <div class="ct">想法驗證器 <span class="pill new">MVP 1</span></div>
-        <div class="cd">貼一則 KOL / 朋友的內容,拆成事實 / 解讀 / 預測 / 最需要成立的假設,逐一挑戰,再看來源勝率。</div>
-        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-      </a>
-      <a class="card" href="implied-expectations.html">
-        <div class="ct">期待差 <span class="pill new">MVP 7</span></div>
-        <div class="cd">現在的價格已經假設這家公司要做到什麼?拿你自己的預期去比,算出「期待差」。</div>
-        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-      </a>
-      <a class="card" href="hidden-exposure.html">
-        <div class="ct">隱藏曝險偵測器 <span class="pill new">MVP 12</span></div>
-        <div class="cd">建一個組合,先猜你最大的單一主題曝險,再揭露「表面分散、其實同一個賭注」。</div>
-        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-      </a>
-    </div>
-  </section>
+    <section class="view" id="flow3">
+      <button class="back" data-home>← 回到三個場景</button>
+      <div class="lede"><div class="kicker">持倉 → 真正的共同賭注</div><h1>我的 Portfolio 實際上在押什麼？</h1><p>確認這次的持倉，先猜自己的集中度。Hunch It 會穿透 ETF，再把集中度放回產業動能與大盤環境判斷。</p></div>
+      <div class="rail" data-rail="f3"><div class="step active" data-step="A"><div class="bar"></div><div class="lab">A　建立 Portfolio</div></div><div class="step" data-step="B"><div class="bar"></div><div class="lab">B　穿透隱藏曝險</div></div><div class="step" data-step="C"><div class="bar"></div><div class="lab">C　比較怎麼調整</div></div></div>
+      <section class="stage" id="f3A"><div class="stage-head"><span class="badge">A</span><div><h2>確認這次的持倉與權重</h2><div class="sub">QQQ 50%／NVDA 20%／TSM 20%／SMH 10%</div></div></div><div class="stage-body">
+        <div class="field"><span class="flabel">目前持倉</span><div class="holdings" id="f3Holdings"></div><div class="total-line"><span>合計權重</span><span class="mono" id="f3Total">100%</span></div><div class="stage-actions"><button class="ghost" id="f3Sample">確認這是我的 Portfolio</button></div></div>
+        <div class="field"><div class="slider-top"><span>你希望半導體曝險最多佔多少？</span><span class="v mono" id="f3LimitVal">60%</span></div><input type="range" id="f3Limit" min="30" max="80" step="5" value="60"></div>
+        <div class="field"><div class="slider-top"><span>你猜目前半導體曝險大概多少？</span><span class="v mono" id="f3GuessVal">30%</span></div><input type="range" id="f3Guess" min="0" max="100" step="5" value="30"><div class="scale"><span>0%</span><span>100%</span></div></div>
+        <div class="field"><span class="flabel">你原本覺得這個 Portfolio？</span><div class="chips" id="f3Diversification"><button class="chip" data-div="concentrated" aria-pressed="false">蠻集中</button><button class="chip" data-div="mid" aria-pressed="false">還算平均</button><button class="chip" data-div="diversified" aria-pressed="false">很分散</button></div></div>
+        <div class="stage-actions"><button class="primary" id="f3ToB">穿透 ETF 與共同假設 →</button></div>
+      </div></section>
+      <section class="stage is-locked" id="f3B"><div class="stage-head"><span class="badge">B</span><div><h2>你的持倉，其實是幾個共同賭注？</h2></div><span class="lock">先完成 A</span></div><div class="stage-body" id="f3BBody"></div></section>
+      <section class="stage is-locked" id="f3C"><div class="stage-head"><span class="badge">C</span><div><h2>比較維持、減碼與換倉</h2></div><span class="lock">先完成 B</span></div><div class="stage-body" id="f3CBody"></div></section>
+      <section class="summary" id="f3Summary"></section>
+    </section>
+  </main>
 
-  <section class="sec">
-    <div class="sec-head"><h2>判斷流程 Agent 原型</h2><span class="sh-sub">把一段 KOL 內容走完整條判斷流程,收斂成你自己的立場</span></div>
-    <div class="grid">
-      <a class="card" href="agent-prototype.html">
-        <div class="ct">交易判斷 Agent <span class="pill">完整版</span></div>
-        <div class="cd">A 看懂想法 → B 關鍵假設 → C 下行風險 → D 太晚了嗎 → F 你自己的立場,含退場計畫、判斷庫、持倉與立場監控。</div>
-        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-      </a>
-      <a class="card" href="hunch-it-standalone.html">
-        <div class="ct">線性版原型 <span class="pill">早期</span></div>
-        <div class="cd">早期 A·C·D·F 線性版,判斷流程的最初形狀。</div>
-        <span class="go">打開 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-      </a>
-    </div>
-  </section>
+  <script>
+  (function(){
+    "use strict";
+    var $=function(id){return document.getElementById(id)},el=function(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+    function setView(id){document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('active',v.id===id)});$('contextTag').textContent=id==='home'?'三個決策場景':({flow1:'外來想法',flow2:'目前價格',flow3:'Portfolio 曝險'}[id]);window.scrollTo({top:0,behavior:'smooth'})}
+    document.querySelectorAll('[data-home]').forEach(function(b){b.addEventListener('click',function(){setView('home')})});document.querySelectorAll('[data-open]').forEach(function(b){b.addEventListener('click',function(){setView(this.dataset.open)})});
+    function curTheme(){return document.documentElement.getAttribute('data-theme')||'light'}function themeLabel(){var next=curTheme()==='dark'?'light':'dark';$('themeIcon').textContent=next==='dark'?'◑':'◐';$('themeLabel').textContent=next==='dark'?'深色':'淺色'}$('themeBtn').addEventListener('click',function(){document.documentElement.setAttribute('data-theme',curTheme()==='dark'?'light':'dark');themeLabel()});themeLabel();
+    function rail(prefix,active){var order=['A','B','C'];document.querySelectorAll('[data-rail="'+prefix+'"] .step').forEach(function(s){var k=s.dataset.step;s.classList.remove('active','done');if(k===active)s.classList.add('active');else if(order.indexOf(k)<order.indexOf(active))s.classList.add('done')})}
+    function unlock(id){var s=$(id);s.classList.remove('is-locked');var l=s.querySelector('.lock');if(l)l.remove();s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'})}
+    function pressGroup(wrap,button){wrap.querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed','false')});button.setAttribute('aria-pressed','true')}
+    function watchBlock(items){return '<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>核心假設改變時，主動叫你回來重新分析。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items">'+items.map(function(x){return '<span class="watch">'+x+'</span>'}).join('')+'</div></div>'}
+    function bindWatch(root,onStart){var b=root.querySelector('.watchBtn');if(!b)return;b.addEventListener('click',function(){this.textContent='監控中 ✓';this.classList.add('watching');if(onStart)onStart()})}
+    function selectedLabels(root){return Array.from(root.querySelectorAll('[aria-pressed="true"]')).map(function(b){return b.textContent.trim()})}
+    function summary(id,title,cells){var s=$(id);s.innerHTML='<h2>'+title+'</h2><p>這是你目前的判斷；監控條件改變時，可以重新打開分析。</p><div class="summary-grid">'+cells.map(function(c){return '<div class="sum"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div></div>'}).join('')+'</div>';s.classList.add('show');s.scrollIntoView({behavior:'smooth',block:'start'})}
 
-  <footer>
-    <b>邊界(貫穿全產品):</b>不給進場價、停損、倉位或個人財務建議;只描述狀態,不下「買 / 不買」指令;所有立場句由使用者擁有。<br>
-    Omnis Labs · Hunch It — 互動原型,內部評估用途。
-  </footer>
-</main>
+    /* Flow 1 — preserve original input -> decomposition -> user response */
+    var F1={source:null,loaded:false,preTouched:false,pre:3,assumptions:{},action:null,monitor:false};
+    document.querySelectorAll('[data-source]').forEach(function(b){b.addEventListener('click',function(){F1.source=this.dataset.source;pressGroup(this.parentElement,this);$('f1SourceEntry').classList.add('show')})});
+    $('f1Load').addEventListener('click',function(){if(!$('f1SourceInput').value.trim())return;F1.loaded=true;$('f1Loaded').classList.add('show');checkF1A()});$('f1Pre').addEventListener('input',function(){F1.pre=+this.value;F1.preTouched=true;$('f1PreVal').textContent=this.value+' / 5';checkF1A()});function checkF1A(){$('f1ToB').disabled=!(F1.loaded&&F1.preTouched)}
+    $('f1ToB').addEventListener('click',function(){rail('f1','B');unlock('f1B');buildF1B()});
+    function buildF1B(){var body=$('f1BBody');body.innerHTML=
+      '<div class="quote">內容摘要：Kyber 延期可能拖慢 NVIDIA 2027 年成長，但不必直接推論長期需求轉弱；真正要看的是延期期間是否流失訂單與獲利。<span class="who">財女珍妮 · YouTube · 2026/07/07 · 非逐字引用</span></div>'+
+      '<div class="field"><span class="flabel">Hunch It 理解的核心論點（可以修改）</span><div class="callout"><div class="editable" contenteditable="true">Kyber 延期是中期風險，不代表目前需求轉弱；市場修正後，NVDA 仍值得買。</div></div></div>'+
+      '<div class="blocks"><div class="block"><div class="label">可查證事實</div><p>NVIDIA 否認路線圖改變；Rubin 已量產，近期需求仍強。</p></div><div class="block"><div class="label">作者的解讀</div><p>延期像過去 Blackwell 的雜音，最終仍能解決。</p></div><div class="block"><div class="label">真正的預測</div><p>NVIDIA 能撐過延遲，不會因此失去重要客戶訂單。</p></div></div>'+
+      '<div class="field"><span class="flabel">你對這三個假設怎麼看？</span><div class="assumptions" id="f1Assumptions"></div></div>'+
+      '<div class="field"><span class="flabel">外部證據怎麼說</span><div class="evidence-list"><div class="evidence"><span class="n">1</span><div><b>延期風險可信，但影響集中在後續架構</b><p>SemiAnalysis 指出 Kyber NVL144 製造困難；這不等於目前 Blackwell／Rubin 需求崩壞。</p></div></div><div class="evidence"><span class="n">2</span><div><b>連提出警告的人仍比市場更看好近期營收</b><p>SemiAnalysis 仍估 FY2027 下半年資料中心運算營收高於市場共識約 20%。</p></div></div><div class="evidence"><span class="n">3</span><div><b>原作者等待的修正已經出現</b><p>NVDA 從五月高點回落約 14–16%，現在不是在最高點追同一個故事。</p></div></div></div><div class="callout"><h3>這個來源可以信到哪裡？</h3><p>作者提供了值得查證的風險線索，但「最終仍會漲」是觀點，不是證據。結論必須回到公司回應、訂單、營收與毛利驗證。</p></div><div class="source-links"><a target="_blank" href="https://www.youtube.com/watch?v=ybd6x6qbIsU">原始影片</a><a target="_blank" href="https://www.cnbc.com/2026/07/06/nvidia-kyber-rack-system-delays-manufacturing-taiwan-rubin-chips-.html">Kyber 報導</a><a target="_blank" href="https://finance.yahoo.com/technology/article/nvidia-denies-report-its-next-generation-ai-server-faces-delays-says-roadmap-is-intact-183310296.html">NVIDIA 回應</a></div></div>'+
+      '<div class="field"><span class="flabel">從現在價格看風險與上行</span><div class="callout"><h3>NVDA $203.53 · 2026/07/14</h3><p>未來 12 個月 Bear $155–175（−14% 至 −24%）；Base $260–300（+28% 至 +47%）。上行高於下行，但不是無條件：必須守住雲端訂單、營收與毛利。</p></div></div>'+
+      '<div class="decision"><div class="small">Hunch It 的判斷</div><h3>現在適合買 NVDA</h3><p>目前需求與近期獲利沒有轉弱，Base 上行足以補償 Bear 下行；Kyber 延期則是最需要持續驗證的風險。</p></div>'+
+      '<div class="callout warn"><h3>最危險的假設</h3><p>即使 Kyber 延期，NVIDIA 仍能守住大型雲端業者的新增訂單、營收與毛利。</p></div><div class="stage-actions"><button class="primary" id="f1ToC">形成我的判斷 →</button></div>';
+      var assumptions=[['目前 Blackwell／Rubin 需求沒有因 Kyber 問題轉弱。',false],['NVIDIA 能在延期期間守住大型雲端業者的新增訂單。',true],['股價修正已足以補償這個中期風險。',false]],wrap=$('f1Assumptions');assumptions.forEach(function(a,i){var d=el('div','assumption'+(a[1]?' key':''),'<b>'+a[0]+'</b><div class="choice-row"><button class="choice" data-v="believe" aria-pressed="false">我相信</button><button class="choice" data-v="doubt" aria-pressed="false">我存疑</button><button class="choice" data-v="unsure" aria-pressed="false">我不確定</button></div>');d.querySelector('.choice-row').addEventListener('click',function(e){var b=e.target.closest('.choice');if(!b)return;pressGroup(this,b);F1.assumptions[i]=b.dataset.v});wrap.appendChild(d)});$('f1ToC').addEventListener('click',function(){rail('f1','C');unlock('f1C');buildF1C()})}
+    function buildF1C(){var body=$('f1CBody');body.innerHTML='<div class="field"><div class="slider-top"><span>看完分析，你現在有多想買？</span><span class="v mono" id="f1PostVal">'+F1.pre+' / 5</span></div><input type="range" id="f1Post" min="1" max="5" value="'+F1.pre+'"></div><div class="field"><span class="flabel">你的決定是？</span><div class="chips" id="f1Actions"><button class="chip" data-action="buy" aria-pressed="false">現在適合買</button><button class="chip" data-action="wait" aria-pressed="false">先等更多證據</button><button class="chip" data-action="skip" aria-pressed="false">放棄這個想法</button></div></div><div class="field"><span class="flabel">哪個變化會讓你重新分析？</span><div class="chips" id="f1Triggers"><button class="chip" aria-pressed="false">雲端客戶開始轉單</button><button class="chip" aria-pressed="false">營收／毛利預期下修</button><button class="chip" aria-pressed="false">Kyber 時程再次改變</button></div></div>'+watchBlock(['Kyber／Rubin Ultra 時程','大型雲端業者轉單','營收與毛利預期'])+'<div class="stage-actions"><button class="primary" id="f1Done" disabled>保存我的判斷</button></div>';
+      $('f1Post').addEventListener('input',function(){$('f1PostVal').textContent=this.value+' / 5'});$('f1Actions').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F1.action=b.dataset.action;pressGroup(this,b);$('f1Done').disabled=false});$('f1Triggers').addEventListener('click',function(e){var b=e.target.closest('.chip');if(b)b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true')});bindWatch(body,function(){F1.monitor=true});$('f1Done').addEventListener('click',function(){var triggers=selectedLabels($('f1Triggers'));summary('f1Summary','你的 NVDA 判斷已保存',[['Hunch It 判斷','現在適合買'],['你的決定',{buy:'現在適合買',wait:'等待',skip:'放棄'}[F1.action]],['重新分析條件',triggers.length?triggers.join('／'):'尚未選擇'],['持續監控',F1.monitor?'已開啟':'尚未開啟']])})}
 
-<script>
-  var b=document.getElementById("themeBtn");
-  function cur(){var t=document.documentElement.getAttribute("data-theme");return t||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");}
-  function lbl(){var n=cur()==="dark"?"light":"dark";document.getElementById("themeIcon").textContent=n==="dark"?"◑":"◐";document.getElementById("themeLbl").textContent=n==="dark"?"深色":"淺色";}
-  b.addEventListener("click",function(){var n=cur()==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",n);try{localStorage.setItem("hi-theme",n);}catch(e){}lbl();});
-  lbl();
-</script>
+    /* Flow 2 — preserve company/holding/intent; replace impossible forecast sliders with evidence-based scenarios */
+    var F2={company:false,hold:null,intent:null,pre:3,scenario:null,action:null,monitor:false};function selectNvda(){$('f2Nvda').setAttribute('aria-pressed','true');F2.company=true;$('f2TickerNote').textContent='已載入 NVIDIA · NVDA · $203.53 · 2026/07/14';checkF2A()}$('f2Nvda').addEventListener('click',selectNvda);$('f2TickerBtn').addEventListener('click',function(){var v=$('f2Ticker').value.trim().toUpperCase();if(v==='NVDA'||v.indexOf('NVIDIA')>=0)selectNvda();else $('f2TickerNote').textContent='這個場景目前使用 NVDA 的完整分析。'});$('f2Ticker').addEventListener('keydown',function(e){if(e.key==='Enter')$('f2TickerBtn').click()});
+    $('f2Hold').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.hold=b.dataset.hold;pressGroup(this,b);renderF2Intent();$('f2IntentField').hidden=false;checkF2A()});function renderF2Intent(){var opts=F2.hold==='yes'?[['add','想加碼'],['hold','想維持'],['reduce','想減碼']]:[['enter','想進場'],['watch','想觀望']],w=$('f2Intent');w.innerHTML='';opts.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.intent=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.intent=o[0];pressGroup(w,b);$('f2ConfField').hidden=false;checkF2A()});w.appendChild(b)})}$('f2Pre').addEventListener('input',function(){F2.pre=+this.value;$('f2PreVal').textContent=this.value+' / 5'});function checkF2A(){$('f2ToB').disabled=!(F2.company&&F2.hold&&F2.intent)}
+    $('f2ToB').addEventListener('click',function(){rail('f2','B');unlock('f2B');buildF2B()});function imp(k,v,h){return '<div class="imp-row"><div class="imp-line"><span class="imp-k">'+k+'</span><span class="imp-v mono">'+v+'</span><button class="q" aria-expanded="false">?</button></div><div class="imp-hint">'+h+'</div></div>'}
+    function buildF2B(){var body=$('f2BBody');body.innerHTML='<div class="callout"><h3>NVDA $203.53 · 2026/07/14</h3><p>市場不只是在買一家好公司；現價仍要求 AI 支出、NVIDIA 市占與毛利同時維持。大盤波動升高，但半導體獲利與相對動能尚未轉弱。</p></div><div class="field"><span class="flabel">現價已經反映的期待</span><div class="imp-rows">'+imp('大型雲端業者 AI 支出','仍維持高檔','如果資本支出縮減，需求與估值會同時承壓。')+imp('NVIDIA 毛利','約中段 70%','新系統成本、HBM 與產品組合不能讓毛利持續失速。')+imp('競爭與自研晶片','只拿走部分新增支出','市場已接受競爭存在，但還沒定價 NVIDIA 明顯失去主導地位。')+imp('Forward valuation','約 18–19×','目前倍數低於過去高峰，但仍需要獲利持續兌現。')+'</div></div><div class="split field"><div class="mini"><b>已經發生的好消息</b><p>Blackwell 放量、資料中心營收高速成長、Rubin 進入量產。</p></div><div class="mini"><b>尚未發生、仍可帶來上行</b><p>推論與企業採用超預期、AI 支出維持更久、競爭沒有明顯侵蝕市占。</p></div></div><div class="callout warn"><h3>好公司變成壞交易的條件</h3><p>AI 支出放慢、客戶轉向 AMD／自研晶片，同時讓 NVIDIA 獲利預期與估值下修。</p></div><div class="source-links"><a target="_blank" href="https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-First-Quarter-Fiscal-2027/default.aspx">NVIDIA FY2027 Q1</a><a target="_blank" href="https://www.thestreet.com/investing/stocks/citi-sends-strong-signal-to-nvidia-investors-amid-rumours">Citi</a><a target="_blank" href="https://www.thestreet.com/investing/stocks/morgan-stanley-resets-nvidia-stock-forecast-after-key-event">Morgan Stanley</a></div><div class="stage-actions"><button class="primary" id="f2ToC">比較風險與上行 →</button></div>';body.querySelectorAll('.q').forEach(function(q){q.addEventListener('click',function(){var h=this.parentElement.nextElementSibling,open=h.classList.toggle('show');this.setAttribute('aria-expanded',open?'true':'false')})});$('f2ToC').addEventListener('click',function(){rail('f2','C');unlock('f2C');buildF2C()})}
+    var scenarios={bear:{label:'Bear',price:'$155–175',ret:'−14% 至 −24%',judgment:'依你相信的假設，目前不值得買',desc:'AI 支出縮減、轉單與毛利下滑，獲利預期和估值一起下降。'},base:{label:'Base',price:'$260–300',ret:'+28% 至 +47%',judgment:'依你相信的假設，目前值得買',desc:'AI 支出維持，NVIDIA 守住主要市占與中段 70% 毛利。'},bull:{label:'Bull',price:'$325–350',ret:'+60% 至 +72%',judgment:'依你相信的假設，目前值得買',desc:'推論與企業採用超預期，獲利持續上修且競爭未明顯傷害市占。'}};
+    function buildF2C(){var body=$('f2CBody');body.innerHTML='<div class="decision"><div class="small">Hunch It 的基準判斷</div><h3>目前價格仍值得買</h3><p>Base／Bull 的剩餘上行仍足以補償 Bear 下行，但前提是 AI 支出、市占與毛利沒有一起轉弱。</p></div><div class="field"><span class="flabel">未來 12 個月，哪個情境最接近你的看法？</span><div class="scenario-grid" id="f2Scenarios"></div><div class="scenario-detail" id="f2ScenarioDetail"></div></div><div class="callout warn" id="f2PersonalDecision" hidden></div><div class="field"><span class="flabel">看完後，你現在想怎麼做？</span><div class="chips" id="f2Actions"><button class="chip" data-action="buy" aria-pressed="false">現在買進</button><button class="chip" data-action="wait" aria-pressed="false">繼續觀望</button><button class="chip" data-action="skip" aria-pressed="false">目前不買</button></div></div><div class="field"><div class="slider-top"><span>現在對「這是好進場點」有多少信心？</span><span class="v mono" id="f2PostVal">'+F2.pre+' / 5</span></div><input type="range" id="f2Post" min="1" max="5" value="'+F2.pre+'"></div>'+watchBlock(['大型雲端業者 AI 支出','資料中心營收與毛利','AMD／自研晶片市占'])+'<div class="stage-actions"><button class="primary" id="f2Done" disabled>保存目前判斷</button></div>';
+      var w=$('f2Scenarios');Object.keys(scenarios).forEach(function(k){var s=scenarios[k],b=el('button','scenario','<span class="sl">'+s.label+' · 12 個月</span><div class="price">'+s.price+'</div><div class="ret">'+s.ret+'</div><div class="desc">'+s.desc+'</div>');b.dataset.scenario=k;b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.scenario=k;pressGroup(w,b);$('f2ScenarioDetail').innerHTML='<b>'+s.label+' 的推導</b><p>'+s.desc+' 以未來獲利範圍 × 對應估值倍數形成價格區間，不是精準目標價。</p>';$('f2ScenarioDetail').classList.add('show');$('f2PersonalDecision').innerHTML='<h3>'+s.judgment+'</h3><p>你的選擇已改變個人判斷；Hunch It 的基準結論仍保留，方便看出分歧在哪個假設。</p>';$('f2PersonalDecision').hidden=false;checkF2Done()});w.appendChild(b)});w.querySelector('[data-scenario="base"]').click();$('f2Actions').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.action=b.dataset.action;pressGroup(this,b);checkF2Done()});$('f2Post').addEventListener('input',function(){$('f2PostVal').textContent=this.value+' / 5'});function checkF2Done(){$('f2Done').disabled=!(F2.scenario&&F2.action)}bindWatch(body,function(){F2.monitor=true});$('f2Done').addEventListener('click',function(){summary('f2Summary','你的 NVDA 價格判斷已保存',[['基準判斷','目前值得買'],['依你的假設',scenarios[F2.scenario].judgment.replace('依你相信的假設，','')],['你的行動',{buy:'現在買進',wait:'繼續觀望',skip:'目前不買'}[F2.action]],['持續監控',F2.monitor?'已開啟':'尚未開啟']])})}
+
+    /* Flow 3 — keep the fixed interview portfolio; preserve guess, limit and action interactions */
+    var assets={QQQ:{name:'Invesco QQQ',semi:16.75,nvda:8.02,tsm:0},NVDA:{name:'NVIDIA',semi:100,nvda:100,tsm:0},TSM:{name:'台積電 ADR',semi:100,nvda:0,tsm:100},SMH:{name:'VanEck SMH',semi:100,nvda:19.86,tsm:9.08},SPY:{name:'SPDR S&P 500',semi:8,nvda:5,tsm:0}},F3={holdings:{QQQ:50,NVDA:20,TSM:20,SMH:10},confirmed:false,limit:60,guess:30,guessTouched:false,div:null,exposure:null,surprise:null,action:null,monitor:false};
+    function renderHoldings(){var w=$('f3Holdings');w.innerHTML='';Object.keys(F3.holdings).forEach(function(k){w.appendChild(el('div','hrow','<span class="hn">'+assets[k].name+'<span class="tk">'+k+'</span></span><span class="win"><strong class="mono">'+F3.holdings[k]+'%</strong></span><span aria-hidden="true">✓</span>'))})}
+    function total(){return Object.keys(F3.holdings).reduce(function(s,k){return s+F3.holdings[k]},0)}$('f3Sample').addEventListener('click',function(){F3.confirmed=true;this.textContent='已確認 ✓';this.classList.add('watching')});$('f3Limit').addEventListener('input',function(){F3.limit=+this.value;$('f3LimitVal').textContent=this.value+'%'});$('f3Guess').addEventListener('input',function(){F3.guess=+this.value;F3.guessTouched=true;$('f3GuessVal').textContent=this.value+'%'});$('f3Diversification').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F3.div=b.dataset.div;pressGroup(this,b)});
+    function exposure(){var t=total()||1,r={semi:0,nvda:0,tsm:0,direct:0,indirect:0};Object.keys(F3.holdings).forEach(function(k){var w=F3.holdings[k]/t*100,a=assets[k];r.semi+=w*a.semi/100;r.nvda+=w*a.nvda/100;r.tsm+=w*a.tsm/100;if(a.semi===100)r.direct+=w;else r.indirect+=w*a.semi/100});Object.keys(r).forEach(function(k){r[k]=Math.round(r[k]*10)/10});return r}$('f3ToB').addEventListener('click',function(){F3.exposure=exposure();rail('f3','B');unlock('f3B');buildF3B()});
+    function contributionRows(){return Object.keys(F3.holdings).map(function(k){var v=Math.round(F3.holdings[k]*assets[k].semi)/100;return '<div class="exposure-row"><span class="name">'+k+' 貢獻</span><span class="track"><span class="fill '+(assets[k].semi===100?'actual':'')+'" style="width:'+v+'%"></span></span><span class="val">'+v.toFixed(1)+'%</span></div>'}).join('')}
+    function buildF3B(){var x=F3.exposure,body=$('f3BBody'),actual=Math.min(100,x.semi),guessPct=Math.min(100,F3.guess),over=actual>F3.limit;body.innerHTML='<div class="headline"><div class="help">可確認的主要半導體曝險</div><div class="big">至少 '+actual.toFixed(1)+'%</div><div class="help">ETF 穿透後，四個標的大量共享 AI 資本支出與半導體景氣假設。</div><div class="compare-bars"><div><div class="bar-top"><span>你剛才猜</span><span class="mono">'+F3.guess+'%</span></div><div class="track"><div class="fill" style="width:'+guessPct+'%"></div></div></div><div><div class="bar-top"><span>ETF 穿透後</span><span class="mono">'+actual.toFixed(1)+'%</span></div><div class="track"><div class="fill actual" style="width:'+actual+'%"></div></div></div></div></div><div class="field"><span class="flabel">每個持倉貢獻多少半導體曝險？</span>'+contributionRows()+'<div class="exposure-row"><span class="name">實際 NVDA</span><span class="track"><span class="fill actual" style="width:'+x.nvda+'%"></span></span><span class="val">'+x.nvda+'%</span></div><div class="exposure-row"><span class="name">實際 TSM</span><span class="track"><span class="fill actual" style="width:'+x.tsm+'%"></span></span><span class="val">'+x.tsm+'%</span></div><div class="source-links"><a target="_blank" href="https://www.invesco.com/qqq-etf/en/about.html">Invesco QQQ 持倉</a><a target="_blank" href="https://www.vaneck.com/us/en/investments/semiconductor-etf-smh/">VanEck SMH 持倉</a></div></div><div class="callout"><h3>共同押注的三個假設</h3><p>大型雲端業者持續 AI 資本支出／NVIDIA 守住加速運算主導地位／台積電先進製程與封裝供給持續轉成獲利。</p></div><div class="callout '+(over?'neg':'')+'"><h3>'+(over?'已超過你設定的 '+F3.limit+'% 上限':'目前低於你設定的 '+F3.limit+'% 上限')+'</h3><p>集中本身不直接等於減碼；還要看產業與大盤是否支持這個集中。</p></div><div class="field"><span class="flabel">把曝險放回目前環境</span><div class="regime-grid"><div class="regime-card"><span class="state">產業動能仍強</span><b>半導體趨勢尚未反轉</b><p>AI 資本支出與獲利預期仍有支撐。</p></div><div class="regime-card"><span class="state" style="color:var(--neg)">大盤波動升高</span><b>科技股開始更顛簸</b><p>繼續加碼會放大同一個風險。</p></div></div></div><div class="decision"><div class="small">Hunch It 的判斷</div><h3>'+(over?'先不要增加，準備比較減碼與換倉':'維持，但不要再增加半導體曝險')+'</h3><p>目前產業動能仍支持集中；若曝險超過 '+F3.limit+'% 或產業／大盤轉弱，再重新比較減碼與換倉。</p></div><div class="stage-actions"><button class="primary" id="f3ToC">比較三個選擇 →</button></div>';$('f3ToC').addEventListener('click',function(){rail('f3','C');unlock('f3C');buildF3C()})}
+    function buildF3C(){var x=F3.exposure,body=$('f3CBody'),reduced=Math.max(0,x.semi-10).toFixed(1),rotated=Math.max(0,x.semi-10+assets.SPY.semi/10).toFixed(1),threshold='半導體曝險超過 '+F3.limit+'%';body.innerHTML='<div class="field"><span class="flabel">這個結果讓你意外嗎？</span><div class="chips" id="f3Surprise"><button class="chip" data-v="yes" aria-pressed="false">很意外</button><button class="chip" data-v="some" aria-pressed="false">隱約知道，但沒算過</button><button class="chip" data-v="no" aria-pressed="false">原本就知道</button></div></div><div class="field"><span class="flabel">比較三個選擇，再決定</span><div class="action-grid" id="f3Actions"><button class="action-card recommended" data-action="hold" aria-pressed="false"><b>維持</b><div class="metric">'+x.semi.toFixed(1)+'%</div><p>保留完整 AI 上行；同一假設失效時波動最大。</p></button><button class="action-card" data-action="reduce" aria-pressed="false"><b>減碼</b><div class="metric">約 '+reduced+'%</div><p>減少 10% SMH 並保留現金；產業續強時參與較少。</p></button><button class="action-card" data-action="rotate" aria-pressed="false"><b>換倉</b><div class="metric">約 '+rotated+'%</div><p>把 10% SMH 換到 SPY，保留市場參與並降低重疊。</p></button></div></div><div class="field" id="f3Reason" hidden><span class="flabel">你為什麼願意繼續承擔這個集中？</span><textarea id="f3ReasonText" placeholder="例如：產業動能仍強，而且我願意在轉弱時重新調整。"></textarea></div>'+watchBlock([threshold,'半導體相對動能轉弱','大盤進入高波動／弱勢環境'])+'<div class="stage-actions"><button class="primary" id="f3Done" disabled>保存 Portfolio 判斷</button></div>';$('f3Surprise').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F3.surprise=b.dataset.v;pressGroup(this,b)});$('f3Actions').addEventListener('click',function(e){var b=e.target.closest('.action-card');if(!b)return;F3.action=b.dataset.action;pressGroup(this,b);$('f3Reason').hidden=F3.action!=='hold';$('f3Done').disabled=false});bindWatch(body,function(){F3.monitor=true});$('f3Done').addEventListener('click',function(){summary('f3Summary','你的 Portfolio 判斷已保存',[['主要半導體曝險','至少 '+x.semi.toFixed(1)+'%'],['重新分析門檻',threshold],['你的選擇',{hold:'維持',reduce:'減碼',rotate:'換倉'}[F3.action]],['持續監控',F3.monitor?'已開啟':'尚未開啟']])})}
+    renderHoldings();
+  })();
+  </script>
 </body>
 </html>
