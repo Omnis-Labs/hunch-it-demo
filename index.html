@@ -78,9 +78,9 @@
       <button class="back" data-home>← 回到三個場景</button>
       <div class="lede"><div class="kicker">好公司 → 現在的交易</div><h1>我喜歡 NVDA，但目前價格值得買嗎？</h1><p>先說你現在的持有狀態與意圖，再看現價已經要求公司做到什麼，以及你承擔的下行與剩餘上行。</p></div>
       <div class="rail" data-rail="f2"><div class="step active" data-step="A"><div class="bar"></div><div class="lab">A　公司與目前意圖</div></div><div class="step" data-step="B"><div class="bar"></div><div class="lab">B　現價反映的期待</div></div><div class="step" data-step="C"><div class="bar"></div><div class="lab">C　風險與上行</div></div></div>
-      <section class="stage" id="f2A"><div class="stage-head"><span class="badge">A</span><div><h2>你正在考慮哪家公司？</h2><div class="sub">帶入公司、持有狀態與現在想做的事</div></div></div><div class="stage-body">
-        <div class="field"><span class="flabel">選擇或輸入公司</span><div class="chips"><button class="chip" id="f2Nvda" aria-pressed="false">NVIDIA <span class="mono">NVDA</span></button></div><div class="input-row" style="margin-top:8px"><input class="text-input" id="f2Ticker" placeholder="輸入 NVDA 或 NVIDIA"><button class="ghost" id="f2TickerBtn">載入</button></div><div class="help" id="f2TickerNote"></div></div>
-        <div class="field"><span class="flabel">你目前持有 NVDA 嗎？</span><div class="chips" id="f2Hold"><button class="chip" data-hold="no" aria-pressed="false">還沒持有</button><button class="chip" data-hold="yes" aria-pressed="false">已經持有</button></div></div>
+      <section class="stage" id="f2A"><div class="stage-head"><span class="badge">A</span><div><h2>你正在考慮哪家公司？</h2><div class="sub">選一家、說持有狀態與現在想做的事</div></div></div><div class="stage-body">
+        <div class="field"><span class="flabel">選一家公司（兩個方向的示範）</span><div class="chips" id="f2Cos"><button class="chip" data-co="NVDA" aria-pressed="false">NVIDIA <span class="mono">NVDA</span> · 市場定價很高</button><button class="chip" data-co="INTC" aria-pressed="false">Intel <span class="mono">INTC</span> · 市場定價很低</button></div><div class="help" id="f2TickerNote"></div></div>
+        <div class="field"><span class="flabel">你目前持有這家公司嗎？</span><div class="chips" id="f2Hold"><button class="chip" data-hold="no" aria-pressed="false">還沒持有</button><button class="chip" data-hold="yes" aria-pressed="false">已經持有</button></div></div>
         <div class="field" id="f2IntentField" hidden><span class="flabel">你現在想做什麼？</span><div class="chips" id="f2Intent"></div></div>
         <div class="field" id="f2ConfField" hidden><div class="slider-top"><span>你現在對「這是好進場點」有多少信心？</span><span class="v mono" id="f2PreVal">3 / 5</span></div><input type="range" id="f2Pre" min="1" max="5" value="3"><div class="scale"><span>1 很沒把握</span><span>5 很有把握</span></div></div>
         <div class="stage-actions"><button class="primary" id="f2ToB" disabled>看看現價已反映什麼 →</button></div>
@@ -172,68 +172,91 @@
                 function buildF1C(){var body=$('f1CBody');body.innerHTML=(F1.planHtml||'')+'<div class="field"><div class="slider-top"><span>看完分析，你現在有多想買？</span><span class="v mono" id="f1PostVal">'+F1.pre+' / 5</span></div><input type="range" id="f1Post" min="1" max="5" value="'+F1.pre+'"></div><div class="field"><span class="flabel">你的決定是？</span><div class="chips" id="f1Actions"><button class="chip" data-action="buy" aria-pressed="false">現在適合買</button><button class="chip" data-action="wait" aria-pressed="false">先等更多證據</button><button class="chip" data-action="skip" aria-pressed="false">放棄這個想法</button></div></div><div class="field"><span class="flabel">哪些變化會讓你重新分析？（勾的就是下面要監控的）</span><div class="chips" id="f1Triggers"><button class="chip" aria-pressed="false">雲端客戶開始轉單</button><button class="chip" aria-pressed="false">營收／毛利預期下修</button><button class="chip" aria-pressed="false">Kyber 時程再次改變</button></div></div>'+'<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>你上面勾的，就是要監控的條件——一發生就叫你回來。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items" id="f1WatchItems"><span style="color:var(--ink-3);font-size:11px">先勾上面至少一個</span></div></div>'+'<div class="stage-actions"><button class="primary" id="f1Done" disabled>保存我的判斷</button></div>';
       $('f1Post').addEventListener('input',function(){$('f1PostVal').textContent=this.value+' / 5'});$('f1Actions').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F1.action=b.dataset.action;pressGroup(this,b);$('f1Done').disabled=false});$('f1Triggers').addEventListener('click',function(e){var b=e.target.closest('.chip');if(b){b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');updF1Watch()}});function updF1Watch(){var sel=selectedLabels($('f1Triggers'));$('f1WatchItems').innerHTML=sel.length?sel.map(function(x){return '<span class="watch watching">'+x+'</span>'}).join(''):'<span style="color:var(--ink-3);font-size:11px">先勾上面至少一個</span>'}bindWatch(body,function(){F1.monitor=true;markMonitored('f1Summary')});$('f1Done').addEventListener('click',function(){var triggers=selectedLabels($('f1Triggers'));summary('f1Summary','你的 NVDA 判斷已保存',[['工具給的','狀態·翻轉·催化（非指令）'],['你的決定',{buy:'現在適合買',wait:'等待',skip:'放棄'}[F1.action]],['重新分析條件',triggers.length?triggers.join('／'):'尚未選擇'],['持續監控',F1.monitor?'已開啟':'尚未開啟']])})}
 
-    /* Flow 2 — preserve company/holding/intent; replace impossible forecast sliders with evidence-based scenarios */
-    var F2={company:false,hold:null,intent:null,pre:3,scenario:null,beliefs:{},quick:null,action:null,monitor:false};function selectNvda(){$('f2Nvda').setAttribute('aria-pressed','true');F2.company=true;$('f2TickerNote').textContent='已載入 NVIDIA · NVDA · $203.53 · 2026/07/14';checkF2A()}$('f2Nvda').addEventListener('click',selectNvda);$('f2TickerBtn').addEventListener('click',function(){var v=$('f2Ticker').value.trim().toUpperCase();if(v==='NVDA'||v.indexOf('NVIDIA')>=0)selectNvda();else $('f2TickerNote').textContent='這個場景目前使用 NVDA 的完整分析。'});$('f2Ticker').addEventListener('keydown',function(e){if(e.key==='Enter')$('f2TickerBtn').click()});
-    $('f2Hold').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.hold=b.dataset.hold;pressGroup(this,b);renderF2Intent();$('f2IntentField').hidden=false;checkF2A()});function renderF2Intent(){var opts=F2.hold==='yes'?[['add','想加碼'],['hold','想維持'],['reduce','想減碼']]:[['enter','想進場'],['watch','想觀望']],w=$('f2Intent');w.innerHTML='';opts.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.intent=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.intent=o[0];pressGroup(w,b);$('f2ConfField').hidden=false;checkF2A()});w.appendChild(b)})}$('f2Pre').addEventListener('input',function(){F2.pre=+this.value;$('f2PreVal').textContent=this.value+' / 5'});function checkF2A(){$('f2ToB').disabled=!(F2.company&&F2.hold&&F2.intent)}
-    $('f2ToB').addEventListener('click',function(){rail('f2','B');unlock('f2B');buildF2B()});function imp(k,v,h){return '<div class="imp-row"><div class="imp-line"><span class="imp-k">'+k+'</span><span class="imp-v mono">'+v+'</span><button class="q" aria-expanded="false">?</button></div><div class="imp-hint">'+h+'</div></div>'}
-    function buildF2B(){var body=$('f2BBody');body.innerHTML='<div class="callout"><h3>NVDA $203.53 · 2026/07/14</h3><p>市場不只是在買一家好公司；現價仍要求 AI 支出、NVIDIA 市占與毛利同時維持。大盤波動升高，但半導體獲利與相對動能尚未轉弱。</p></div><div class="field"><span class="flabel">現價已經反映的期待</span><div class="imp-rows">'+imp('大型雲端業者 AI 支出','仍維持高檔','如果資本支出縮減，需求與估值會同時承壓。')+imp('NVIDIA 毛利','約中段 70%','新系統成本、HBM 與產品組合不能讓毛利持續失速。')+imp('競爭與自研晶片','只拿走部分新增支出','市場已接受競爭存在，但還沒定價 NVIDIA 明顯失去主導地位。')+imp('Forward valuation','約 18–19×','目前倍數低於過去高峰，但仍需要獲利持續兌現。')+'</div></div><div class="split field"><div class="mini"><b>已經發生的好消息</b><p>Blackwell 放量、資料中心營收高速成長、Rubin 進入量產。</p></div><div class="mini"><b>尚未發生、仍可帶來上行</b><p>推論與企業採用超預期、AI 支出維持更久、競爭沒有明顯侵蝕市占。</p></div></div><div class="callout warn"><h3>好公司變成壞交易的條件</h3><p>AI 支出放慢、客戶轉向 AMD／自研晶片，同時讓 NVIDIA 獲利預期與估值下修。</p></div><div class="source-links"><a target="_blank" href="https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-First-Quarter-Fiscal-2027/default.aspx">NVIDIA FY2027 Q1</a><a target="_blank" href="https://www.thestreet.com/investing/stocks/citi-sends-strong-signal-to-nvidia-investors-amid-rumours">Citi</a><a target="_blank" href="https://www.thestreet.com/investing/stocks/morgan-stanley-resets-nvidia-stock-forecast-after-key-event">Morgan Stanley</a></div><div class="stage-actions"><button class="primary" id="f2ToC">比較風險與上行 →</button></div>';body.querySelectorAll('.q').forEach(function(q){q.addEventListener('click',function(){var h=this.parentElement.nextElementSibling,open=h.classList.toggle('show');this.setAttribute('aria-expanded',open?'true':'false')})});$('f2ToC').addEventListener('click',function(){rail('f2','C');unlock('f2C');buildF2C()})}
-
-    function buildF2C(){var body=$('f2CBody');var P0=203.53;
-      var ITEMS=[
-        {k:'growth',label:'營收：未來 3 年年化 ~28% 成長',base:'這個營收量級的公司，連續 3 年維持 28%+ 成長，歷史上不到 5%（示意，待接 Base Rate Book）。'},
-        {k:'margin',label:'毛利：守在中段 70%',base:'新系統成本、HBM 與產品組合都在壓毛利——守得住是強假設（示意）。'},
-        {k:'multiple',label:'估值：~18–19× FY27（至 2027/1）獲利倍數維持',base:'倍數已低於過去高峰，但仍需獲利持續兌現才撐得住（示意）。'}
-      ];
-      var TRIG={growth:'營收成長跌破市場定價（28%）',margin:'毛利跌破中段 70%',multiple:'估值倍數回落（de-rating）'};
+    /* Flow 2 — data-driven, two companies (priced-high vs priced-low) + market regime */
+    var F2CO={
+      NVDA:{name:'NVIDIA',tk:'NVDA',px:'$203.53',dir:'high',fail:'$165',
+        bText:'市場不只買一家好公司；現價仍要求 AI 支出、市占與毛利同時維持。大盤波動升高，但半導體獲利與相對動能尚未轉弱。',
+        brows:[['大型雲端業者 AI 支出','仍維持高檔','資本支出縮減，需求與估值會同時承壓。'],['NVIDIA 毛利','約中段 70%','新系統成本、HBM 不能讓毛利持續失速。'],['競爭與自研晶片','只拿走部分新增支出','市場已接受競爭，但沒定價 NVIDIA 失去主導。'],['Forward valuation','約 18–19× FY27','倍數低於過去高峰，但需獲利兌現。']],
+        good:'Blackwell 放量、資料中心營收高速成長、Rubin 量產。',up:'推論與企業採用超預期、AI 支出維持更久、競爭沒有明顯侵蝕市占。',
+        bad:'AI 支出放慢、客戶轉向 AMD／自研晶片，同時讓獲利預期與估值下修。',
+        links:'<a target="_blank" href="https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Announces-Financial-Results-for-First-Quarter-Fiscal-2027/default.aspx">NVIDIA FY2027 Q1</a><a target="_blank" href="https://www.thestreet.com/investing/stocks/citi-sends-strong-signal-to-nvidia-investors-amid-rumours">Citi</a>',
+        prem:[{k:'growth',label:'營收：未來 3 年年化 ~28% 成長',base:'這個營收量級維持 28%+ 三年，歷史不到 5%（示意）。'},{k:'margin',label:'毛利：守在中段 70%',base:'成本與組合都在壓毛利，守得住是強假設（示意）。'},{k:'multiple',label:'估值：~18–19× FY27 倍數維持',base:'倍數已低於高峰，但需獲利兌現（示意）。'}],
+        trig:{growth:'營收成長跌破市場定價（28%）',margin:'毛利跌破中段 70%',multiple:'估值倍數回落（de-rating）'},
+        b:{hi:'$260–350（Base–Bull）',base:'$260–300（Base）',mid:'$175–260（Base–Bear 之間）',bear:'$155–175（Bear）'},cat:'下季財報（約 8/27）'},
+      INTC:{name:'Intel',tk:'INTC',px:'$24.00',dir:'low',fail:'$19',
+        bText:'市場幾乎沒在期待它——現價把 Intel 定價成「代工失敗、毛利回不來」。你要判斷的不是它有多好，而是它會不會做得比這個低標好。',
+        brows:[['未來 3 年營收成長','市場只定價 ~3%','市場預期停滯、甚至衰退。'],['毛利','市場只定價守在 ~35%','已從高峰砍半，市場不期待回升。'],['代工（Foundry）','市場定價為「拿不到大客戶」','外部大單被當選擇權、幾乎沒算進去。'],['Forward valuation','~12–14×（已很低）','市場不願給它成長股倍數。']],
+        good:'成本重整見效、外部代工試產、政府補貼落地。',up:'只要拿到一個大代工客戶、或毛利回到 40%，市場的低標就被超越。',
+        bad:'代工繼續拿不到客戶、毛利再破底——市場的悲觀被證實。',
+        links:'<a target="_blank" href="https://www.intc.com/">Intel IR</a>',
+        prem:[{k:'growth',label:'營收：能回到 ~8% 成長（高於市場定價的 3%）',base:'週期落底後回升在半導體常見，但 Intel 執行有前科（示意）。'},{k:'margin',label:'毛利：能回到 ~40%（高於市場定價的 35%）',base:'成本重整若見效可回升，但代工爬坡會拖累（示意）。'},{k:'foundry',label:'代工：拿到至少一個外部大客戶',base:'市場幾乎沒定價的選擇權，兌現空間最大（示意）。'}],
+        trig:{growth:'營收成長連兩季低於 3%',margin:'毛利跌破 35%（連低標都守不住）',foundry:'代工大單再度落空'},
+        b:{hi:'$30–42（Base–Bull）',base:'$30–34（Base）',mid:'$20–30（Base–Bear 之間）',bear:'$18–20（Bear）'},cat:'下季財報 + 代工客戶進展'}
+    };
+    var F2={co:null,hold:null,intent:null,pre:3,beliefs:{},quick:null,regime:'head',action:null,monitor:false};
+    $('f2Cos').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.co=b.dataset.co;F2.beliefs={};F2.quick=null;pressGroup(this,b);$('f2TickerNote').textContent='已載入 '+F2CO[F2.co].name+' · '+F2.co+' · '+F2CO[F2.co].px+' · 2026/07/14';checkF2A()});
+    $('f2Hold').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.hold=b.dataset.hold;pressGroup(this,b);renderF2Intent();$('f2IntentField').hidden=false;checkF2A()});
+    function renderF2Intent(){var opts=F2.hold==='yes'?[['add','想加碼'],['hold','想維持'],['reduce','想減碼']]:[['enter','想進場'],['watch','想觀望']],w=$('f2Intent');w.innerHTML='';opts.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.intent=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.intent=o[0];pressGroup(w,b);$('f2ConfField').hidden=false;checkF2A()});w.appendChild(b)})}
+    $('f2Pre').addEventListener('input',function(){F2.pre=+this.value;$('f2PreVal').textContent=this.value+' / 5'});
+    function checkF2A(){$('f2ToB').disabled=!(F2.co&&F2.hold&&F2.intent)}
+    $('f2ToB').addEventListener('click',function(){rail('f2','B');unlock('f2B');buildF2B()});
+    function imp(k,v,h){return '<div class="imp-row"><div class="imp-line"><span class="imp-k">'+k+'</span><span class="imp-v mono">'+v+'</span><button class="q" aria-expanded="false">?</button></div><div class="imp-hint">'+h+'</div></div>'}
+    function buildF2B(){var C=F2CO[F2.co],body=$('f2BBody');
+      body.innerHTML='<div class="callout"><h3>'+C.tk+' '+C.px+' · 2026/07/14</h3><p>'+C.bText+'</p></div><div class="field"><span class="flabel">現價已經反映的期待</span><div class="imp-rows">'+C.brows.map(function(r){return imp(r[0],r[1],r[2])}).join('')+'</div></div><div class="split field"><div class="mini"><b>已經發生／市場已知</b><p>'+C.good+'</p></div><div class="mini"><b>尚未發生、仍可帶來上行</b><p>'+C.up+'</p></div></div><div class="callout warn"><h3>'+(C.dir==='high'?'好公司變成壞交易的條件':'低標被證實的條件')+'</h3><p>'+C.bad+'</p></div><div class="source-links">'+C.links+'</div><div class="stage-actions"><button class="primary" id="f2ToC">比較風險與上行 →</button></div>';
+      body.querySelectorAll('.q').forEach(function(q){q.addEventListener('click',function(){var h=this.parentElement.nextElementSibling,open=h.classList.toggle('show');this.setAttribute('aria-expanded',open?'true':'false')})});
+      $('f2ToC').addEventListener('click',function(){rail('f2','C');unlock('f2C');buildF2C()})}
+    function buildF2C(){var C=F2CO[F2.co],body=$('f2CBody'),ITEMS=C.prem,TRIG=C.trig,px=C.px;
       var held=F2.hold==='yes';
       var ACT=held?[['add','我要加碼'],['keep','我維持'],['reduce','我要減碼'],['exit','我出清']]:[['buy','我要進場'],['wait','我先觀望'],['skip','我放棄']];
       var confLabel=held?'你現在對「在這裡加碼／調整」有多少把握？':'你現在對「這是好進場點」有多少信心？';
-      body.innerHTML='<div class="callout"><h3>現價 $203.53 · Base 情境的三個前提</h3><p>在<b>倍數不變</b>下，這三件同時成立 = 股價跟著獲利成長走（做到 ≈ 賺到）。逐項標你信不信——被你標「存疑」的那項就是結論的翻轉點。</p></div>'+
-      '<div class="field"><span class="flabel">你信哪幾件？（三項都標，或用下面一句話快答）</span><div class="assumptions" id="f2Beliefs"></div></div>'+
-      '<div class="field"><span class="flabel">一句話快答</span><div class="chips" id="f2Quick"><button class="chip" data-q="beat" aria-pressed="false">整體會超過（→ Bull）</button><button class="chip" data-q="meet" aria-pressed="false">差不多達到（→ Base）</button><button class="chip" data-q="miss" aria-pressed="false">達不到（→ Bear）</button></div></div>'+
-      '<div class="decision" id="f2Reco" hidden></div>'+
-      '<div id="f2Plan"></div>'+
+      var lead=C.dir==='high'?('現價 '+px+' · 這是市場要求它做到的（Base 前提，倍數不變下做到 ≈ 賺到）'):('現價 '+px+' · 市場的低標——你要判斷它會不會做得更好');
+      body.innerHTML='<div class="callout"><h3>'+lead+'</h3><p>逐項標你信不信——'+(C.dir==='high'?'被你標「存疑」的那項就是結論的翻轉點。':'你相信得越多，代表你越認為市場低估了它。')+'</p></div>'+
+      '<div class="field"><span class="flabel">你信哪幾件？（都標，或用下面一句話快答）</span><div class="assumptions" id="f2Beliefs"></div></div>'+
+      '<div class="field"><span class="flabel">一句話快答</span><div class="chips" id="f2Quick"><button class="chip" data-q="beat" aria-pressed="false">'+(C.dir==='high'?'整體會超過（→ Bull）':'會做得比市場低標好（→ 看多）')+'</button><button class="chip" data-q="meet" aria-pressed="false">差不多（→ Base）</button><button class="chip" data-q="miss" aria-pressed="false">'+(C.dir==='high'?'達不到（→ Bear）':'連低標都做不到（→ 避開）')+'</button></div></div>'+
+      '<div class="field"><span class="flabel">目前大盤環境？（示意：近期高檔、波動升高）</span><div class="chips" id="f2Regime"><button class="chip" data-r="tail" aria-pressed="false">順風</button><button class="chip" data-r="neutral" aria-pressed="false">中性</button><button class="chip" data-r="head" aria-pressed="true">逆風</button></div></div>'+
+      '<div class="decision" id="f2Reco" hidden></div><div id="f2Plan"></div>'+
       '<div class="field"><span class="flabel">看完後，你決定怎麼做？</span><div class="chips" id="f2Actions"></div></div>'+
       '<div class="field"><div class="slider-top"><span>'+confLabel+'</span><span class="v mono" id="f2PostVal">'+F2.pre+' / 5</span></div><input type="range" id="f2Post" min="1" max="5" value="'+F2.pre+'"></div>'+
       '<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>你標「存疑」的那項會排到第一顆並預選——它一鬆動就叫你回來。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items" id="f2WatchItems"></div></div>'+
       '<div class="stage-actions"><button class="primary" id="f2Done" disabled>保存目前判斷</button></div>';
       var bw=$('f2Beliefs');
       ITEMS.forEach(function(it){var d=el('div','assumption','<b>'+it.label+'</b><div style="font-size:11px;color:var(--ink-3);margin-top:5px">'+it.base+'</div><div class="choice-row"><button class="choice" data-v="believe" aria-pressed="false">相信</button><button class="choice" data-v="doubt" aria-pressed="false">存疑</button><button class="choice" data-v="disbelieve" aria-pressed="false">不相信</button></div>');
-        d.querySelector('.choice-row').addEventListener('click',function(e){var b=e.target.closest('.choice');if(!b)return;pressGroup(this,b);F2.beliefs[it.k]=b.dataset.v;F2.quick=null;$('f2Quick').querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed','false')});reco()});
-        bw.appendChild(d);});
+        d.querySelector('.choice-row').addEventListener('click',function(e){var b=e.target.closest('.choice');if(!b)return;pressGroup(this,b);F2.beliefs[it.k]=b.dataset.v;F2.quick=null;$('f2Quick').querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed','false')});reco()});bw.appendChild(d)});
       $('f2Quick').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.quick=b.dataset.q;pressGroup(this,b);F2.beliefs={};bw.querySelectorAll('.choice').forEach(function(x){x.setAttribute('aria-pressed','false')});reco()});
+      $('f2Regime').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.regime=b.dataset.r;pressGroup(this,b);reco()});
       var aw=$('f2Actions');ACT.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.action=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.action=o[0];pressGroup(aw,b);checkF2Done()});aw.appendChild(b)});
       function updWatch(dk){var ord=dk.concat(ITEMS.map(function(it){return it.k}).filter(function(k){return dk.indexOf(k)<0}));$('f2WatchItems').innerHTML=ord.map(function(k){var f=dk.indexOf(k)>=0;return '<span class="watch'+(f?' watching':'')+'">'+TRIG[k]+(f?' · 你的翻轉條件':'')+'</span>'}).join('')}
       updWatch([]);
-      function reco(){var d=$('f2Reco'),cls,band,status,pos,believed=[],doubted=[],dk=[];
-        if(F2.quick){var q=F2.quick;if(q==='beat'){cls='';band='$325–350（Bull）';status='偏多方 · 你認為會超過市場定價';pos='現價 $203.53 遠低於這個區間——若真的超預期，空間很大';}else if(q==='meet'){cls='';band='$260–300（Base）';status='溫和偏多 · 你認為差不多達到';pos='現價 $203.53 低於區間下緣——前提成立就有到區間的空間';}else{cls='neg';band='$155–175（Bear）';status='偏空 · 你認為達不到定價';pos='現價 $203.53 高於這個區間上緣——依你的看法已透支';}}
-        else{if(Object.keys(F2.beliefs).length<3){d.hidden=true;$('f2Plan').innerHTML='';updWatch([]);checkF2Done();return;}var m={believe:1,doubt:0,disbelieve:-1},lean=0;ITEMS.forEach(function(it){var v=F2.beliefs[it.k];lean+=m[v];if(v==='believe')believed.push(it.label.split('：')[0]);else{doubted.push(it.label.split('：')[0]);dk.push(it.k);}});
-          if(lean>=2){cls='';band='$260–350（Base–Bull）';status='偏多方 · 三前提你多數相信';pos='現價 $203.53 低於區間下緣——前提成立則有到區間的空間';}
-          else if(lean===1){cls='';band='$260–300（Base 附近）';status='溫和偏多 · 上行仍大於下行';pos='現價 $203.53 低於區間下緣——前提成立就有空間';}
-          else if(lean===0){cls='warn';band='$175–260（Base–Bear 之間）';status='中性 · 你對其中幾項存疑，天平沒往哪邊倒';pos='現價 $203.53 落在區間中段——沒有明顯安全邊際';}
-          else{cls='neg';band='$155–200（Bear 附近）';status='偏空 · 你不信核心前提';pos='現價 $203.53 已高於區間上緣——依你的看法偏貴';}}
-        var reasons=F2.quick?('你的整體判斷：市場定價的成長，你覺得'+({beat:'會超過',meet:'差不多',miss:'達不到'}[F2.quick])):(believed.length?('你相信：'+believed.join('、')):'你沒有明確相信的項目');
-        var flip=F2.quick?'任一項核心前提（成長／毛利／倍數）開始鬆動':(doubted.length?('你存疑：'+doubted.join('、')):'之後開始懷疑任一項時');
-        var heldNote=(held&&(cls===''))?'<br><b>你已持有：</b>加碼是把賭注變大——Bear 情境下你整體部位會承受更多，不是只賭這一筆。':'';
+      function reco(){var d=$('f2Reco'),lean,dk=[],believed=[],doubted=[];
+        if(F2.quick){lean={beat:2,meet:1,miss:-1}[F2.quick];}
+        else{if(Object.keys(F2.beliefs).length<ITEMS.length){d.hidden=true;$('f2Plan').innerHTML='';updWatch([]);checkF2Done();return;}var m={believe:1,doubt:0,disbelieve:-1};lean=0;ITEMS.forEach(function(it){var v=F2.beliefs[it.k];lean+=m[v];if(v==='believe')believed.push(it.label.split('：')[0]);else{doubted.push(it.label.split('：')[0]);dk.push(it.k);}});}
+        var cls,status,band;
+        if(C.dir==='high'){if(lean>=2){cls='';status='偏多方 · 你認同這個偏高的定價';band=C.b.hi;}else if(lean===1){cls='';status='溫和偏多 · 上行仍大於下行';band=C.b.base;}else if(lean===0){cls='warn';status='中性 · 你對其中幾項存疑，天平沒往哪邊倒';band=C.b.mid;}else{cls='neg';status='偏空 · 你認為做不到 → 現價偏貴';band=C.b.bear;}}
+        else{if(lean>=2){cls='';status='看多 · 市場低估，你認為它會超過這個低標';band=C.b.hi;}else if(lean===1){cls='';status='溫和偏多 · 你認為略高於市場低標';band=C.b.base;}else if(lean===0){cls='warn';status='中性 · 連你也只有一半把握';band=C.b.mid;}else{cls='neg';status='避開 · 連市場的低標你都不信它做到';band=C.b.bear;}}
+        var pos=cls===''?('現價 '+px+' 低於你信念價值區間下緣——前提成立就有到區間的空間'):(cls==='warn'?('現價 '+px+' 落在區間中段——安全邊際有限'):('現價 '+px+' 已到／高於區間上緣——'+(C.dir==='low'?'看法偏空，避開':'依你看法偏貴')));
+        var reasons=F2.quick?('你的整體判斷：'+({beat:C.dir==='high'?'會超過定價':'會超過市場低標',meet:'差不多',miss:C.dir==='high'?'達不到':'連低標都做不到'}[F2.quick])):(believed.length?('你相信：'+believed.join('、')):'你沒有明確相信的項目');
+        var flip=F2.quick?'任一項前提開始鬆動':(doubted.length?('你存疑：'+doubted.join('、')):'之後開始懷疑任一項時');
+        var reg=F2.regime,regTxt=reg==='head'?'目前高檔、動能轉弱（示意）——即使個股 R/R 好，也宜縮小部位、分更多批，或等回檔到進場區下緣。':(reg==='tail'?'目前研判順風，可正常執行。':'目前中性。');
+        if(reg==='head'&&cls==='')status+=' · 但大盤逆風';
+        var heldNote=(held&&cls==='')?'<br><b>你已持有：</b>加碼是把賭注變大——不利情境下你整體部位承受更多。':'';
         d.className='callout '+cls;
-        d.innerHTML='<h3>'+status+'</h3><p><b>推導：</b>你信念的版本 → 對應價格 '+band+'；'+pos+'。<br><b>理由：</b>'+reasons+'。<br><b>翻轉條件：</b>'+flip+' → 結論翻向，已排進下方監控第一顆。<br><b>下一個驗證點：</b>下季財報（約 8/27）——在那之前，這是進場前提檢查，不是進場訊號。'+heldNote+'</p><p style="font-size:11px;opacity:.75;margin-top:9px">這是狀態與前提，不是買賣或時點指令——扳機留給你。</p>';
-        d.hidden=false;
-        updWatch(dk);
+        d.innerHTML='<h3>'+status+'</h3><p><b>推導：</b>你信念的版本 → 對應價格 '+band+'；'+pos+'。<br><b>理由：</b>'+reasons+'。<br><b>翻轉條件：</b>'+flip+' → 已排進下方監控第一顆。<br><b>大盤：</b>'+regTxt+'<br><b>下一個驗證點：</b>'+C.cat+'。'+heldNote+'</p><p style="font-size:11px;opacity:.75;margin-top:9px">這是狀態與前提，不是買賣或時點指令——扳機留給你。</p>';
+        d.hidden=false;updWatch(dk);
         var pl=$('f2Plan');
-        if(cls==='neg'){pl.innerHTML='<div class="plan"><div class="plan-h">交易計劃（草稿）<span class="tagx">你決定</span></div><div class="plan-row"><span class="pk">結論</span><span class="pv">你偏空——目前無進場計劃。設一個「什麼改變才重啟」的條件與價位（≈ '+band+'）並監控。</span></div></div>';}
-        else{var exitKeys=dk.length?dk:['growth','margin','multiple'],exitTxt=exitKeys.map(function(k){return TRIG[k]}).join('；');pl.innerHTML=planCard([
-          ['進場區','現價 $203.53'+(cls===''?'（低於你信念價值 '+band+' 下緣，有安全邊際；越低邊際越大）':'（落在區間中段，安全邊際有限，宜更小額）')],
-          ['部位大小','先想「如果它跌到 Bear（$165，約 −19%），我賠多少錢還睡得著」，用那個金額回推能買多少——分 2–3 批進，不要一次全下'],
+        if(cls==='neg'){pl.innerHTML='<div class="plan"><div class="plan-h">交易計劃（草稿）<span class="tagx">你決定</span></div><div class="plan-row"><span class="pk">結論</span><span class="pv">'+(C.dir==='low'?'你不信它會超過低標——避開，或設「拿到大單才重看」的條件。':'你偏空——目前無進場計劃。設「什麼改變才重啟」的條件與價位（≈ '+band+'）並監控。')+'</span></div></div>';}
+        else{var exitKeys=dk.length?dk:ITEMS.map(function(it){return it.k}),exitTxt=exitKeys.map(function(k){return TRIG[k]}).join('；');
+          pl.innerHTML=planCard([['進場區','現價 '+px+(cls===''?'（低於你信念價值 '+band+' 下緣，有安全邊際）':'（區間中段，安全邊際有限，宜更小額）')],
+          ['部位大小','先想「如果它跌到失效價（'+C.fail+'）我賠多少錢還睡得著」，用那個金額回推能買多少——分 2–3 批進，不要一次全下'],
+          ['大盤 regime',reg==='head'?'逆風 → 部位再打折、分更多批，或等回檔到進場區下緣':(reg==='tail'?'順風 → 可正常執行':'中性')],
           ['退場條件','下面任一前提跌破門檻就退場 —— '+exitTxt+'。先分批減碼，確認回不去再出清。'],
           ['價格停損','只是防「跳空、來不及成交」的保險，不是你主要的出場理由'],
-          ['時間 / 催化劑','下季財報（約 8/27）；未達預期則重評'],
-          ['監控',(doubted.length?doubted.join('、'):'三前提任一鬆動')+'（已預選）']
-        ],'草稿——這是你的計劃，不是買賣或時點指令。扳機留給你。');}
+          ['時間 / 催化劑',C.cat],
+          ['監控',(doubted.length?doubted.join('、'):'各前提任一鬆動')+'（已預選）']],'草稿——這是你的計劃，不是買賣或時點指令。扳機留給你。');}
         checkF2Done();}
       $('f2Post').addEventListener('input',function(){$('f2PostVal').textContent=this.value+' / 5'});
-      function checkF2Done(){$('f2Done').disabled=!((F2.quick||Object.keys(F2.beliefs).length>=3)&&F2.action);}
+      function checkF2Done(){$('f2Done').disabled=!((F2.quick||Object.keys(F2.beliefs).length>=ITEMS.length)&&F2.action);}
       bindWatch(body,function(){F2.monitor=true;markMonitored('f2Summary')});
-      $('f2Done').addEventListener('click',function(){var al={add:'加碼',keep:'維持',reduce:'減碼',exit:'出清',buy:'進場',wait:'觀望',skip:'放棄'}[F2.action];summary('f2Summary','你的 NVDA 前提檢查已保存',[['市場隱含','成長／毛利／倍數 三前提'],['你的信念',F2.quick?({beat:'整體會超過',meet:'差不多',miss:'達不到'}[F2.quick]):(Object.keys(F2.beliefs).length+' 項已標')],['你的決定',al],['進場前→後信心',F2.pre+' → '+$('f2Post').value],['持續監控',F2.monitor?'已開啟':'尚未開啟']])});}
+      $('f2Done').addEventListener('click',function(){var al={add:'加碼',keep:'維持',reduce:'減碼',exit:'出清',buy:'進場',wait:'觀望',skip:'放棄'}[F2.action];summary('f2Summary','你的 '+C.tk+' 前提檢查已保存',[['公司 · 方向',C.name+'（'+(C.dir==='high'?'市場定價高':'市場定價低')+'）'],['你的信念',F2.quick?({beat:'超過',meet:'差不多',miss:'達不到'}[F2.quick]):(Object.keys(F2.beliefs).length+' 項已標')],['大盤',{tail:'順風',neutral:'中性',head:'逆風'}[F2.regime]],['你的決定',al],['進場前→後信心',F2.pre+' → '+$('f2Post').value],['持續監控',F2.monitor?'已開啟':'尚未開啟']])});}
 
     /* Flow 3 — cash-aware (no normalization), multi-narrative + single-name look-through */
     var NARR={ai_capex:'AI 資本支出',semi:'半導體景氣',megacap:'大型科技估值',rates:'利率 / 長天期'};
