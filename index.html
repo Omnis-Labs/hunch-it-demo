@@ -37,6 +37,7 @@
     .headline{background:var(--surface-2);border-radius:var(--r-sm);padding:16px}.headline .big{font:800 34px/1.1 var(--mono);color:var(--neg);margin:5px 0}.compare-bars{display:grid;gap:8px;margin-top:13px}.bar-top{display:flex;justify-content:space-between;font-size:11px}.track{height:11px;background:var(--raise);border:1px solid var(--border);border-radius:100px;overflow:hidden}.fill{display:block;height:100%;border-radius:100px;background:var(--ink-3)}.fill.actual{background:var(--neg)}.exposure-row{display:grid;grid-template-columns:115px 1fr 55px;gap:10px;align-items:center;margin-top:10px}.exposure-row .name{font-size:11px}.exposure-row .val{text-align:right;font:700 11px/1 var(--mono)}
     .regime-grid,.action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.regime-card,.action-card{border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;background:var(--raise)}.regime-card .state{font-size:10px;font-weight:750;color:var(--accent)}.regime-card b{display:block;font-size:12px;margin:4px 0}.regime-card p{margin:0;color:var(--ink-2);font-size:10px}.action-grid{grid-template-columns:repeat(3,1fr)}.action-card{cursor:pointer;text-align:left}.action-card[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-wash)}.action-card.recommended:before{content:"符合你設的規則";display:inline-block;background:var(--accent);color:var(--accent-ink);border-radius:100px;padding:2px 6px;font-size:9px;font-weight:700;margin-bottom:7px}.action-card b{display:block;font-size:13px}.action-card .metric{font:750 17px/1.3 var(--mono);margin:5px 0}.action-card p{font-size:10px;color:var(--ink-2);margin:0}
     .summary{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:16px}.summary.show{display:block}.summary h2{font-size:18px;margin:0 0 5px}.summary p{font-size:12px;color:var(--ink-2);margin:0}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}.sum{background:var(--surface-2);border-radius:var(--r-sm);padding:12px}.sum .k{font-size:10px;color:var(--ink-3)}.sum .v{font-size:13px;font-weight:700;margin-top:3px}.fine{font-size:10px;color:var(--ink-3);margin-top:14px}
+    .plan{border:1.5px solid var(--accent);border-radius:var(--r);overflow:hidden;margin-top:14px}.plan-h{background:var(--accent-wash);color:var(--accent);padding:11px 16px;font-weight:700;font-size:13.5px;display:flex;justify-content:space-between;align-items:center}.plan-h .tagx{font-size:10px;font-weight:600;color:var(--ink-3)}.plan-row{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:10px 16px;border-top:1px solid var(--border);font-size:12.5px}.plan-row .pk{color:var(--ink-2);font-weight:600}.plan-foot{padding:9px 16px;font-size:11px;color:var(--ink-3);border-top:1px dashed var(--border-strong)}
     :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}@media(max-width:720px){.doors,.blocks,.scenario-grid,.action-grid{grid-template-columns:1fr}.split,.regime-grid{grid-template-columns:1fr}.door{min-height:auto}.rail .lab{font-size:9px}.input-row{flex-direction:column}.monitor-head{align-items:flex-start;flex-direction:column}.summary-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.stage-head,.stage-body{padding-left:15px;padding-right:15px}.shell{padding-top:22px}.hrow{grid-template-columns:1fr 90px 25px}.exposure-row{grid-template-columns:90px 1fr 45px}}@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}html{scroll-behavior:auto}}
   </style>
 </head>
@@ -123,6 +124,7 @@
     function bindWatch(root,onStart){var b=root.querySelector('.watchBtn');if(!b)return;b.addEventListener('click',function(){this.textContent='監控中 ✓';this.classList.add('watching');if(onStart)onStart()})}
     function selectedLabels(root){return Array.from(root.querySelectorAll('[aria-pressed="true"]')).map(function(b){return b.textContent.trim()})}
     function summary(id,title,cells){var s=$(id);s.innerHTML='<h2>'+title+'</h2><p>這是你目前的判斷；監控條件改變時，可以重新打開分析。</p><div class="summary-grid">'+cells.map(function(c){return '<div class="sum"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div></div>'}).join('')+'</div>';s.classList.add('show');s.scrollIntoView({behavior:'smooth',block:'start'})}
+    function planCard(rows,note){return '<div class="plan"><div class="plan-h">交易計劃（草稿）<span class="tagx">你決定是否執行</span></div>'+rows.filter(function(r){return r&&r[1]}).map(function(r){return '<div class="plan-row"><span class="pk">'+r[0]+'</span><span class="pv">'+r[1]+'</span></div>'}).join('')+'<div class="plan-foot">'+note+'</div></div>'}
     function markMonitored(id){var s=$(id);if(!s||!s.classList.contains('show'))return;s.querySelectorAll('.sum').forEach(function(c){var k=c.querySelector('.k');if(k&&k.textContent.indexOf('監控')>=0){var v=c.querySelector('.v');if(v)v.textContent='已開啟'}})}
 
     /* Flow 1 — preserve original input -> decomposition -> user response */
@@ -139,14 +141,15 @@
       '<div class="field"><span class="flabel">外部證據怎麼說</span><div class="evidence-list"><div class="evidence"><span class="n">1</span><div><b>延期風險可信，但影響集中在後續架構</b><p>SemiAnalysis 指出 Kyber NVL144 製造困難；這不等於目前 Blackwell／Rubin 需求崩壞。</p></div></div><div class="evidence"><span class="n">2</span><div><b>連提出警告的人仍比市場更看好近期營收</b><p>SemiAnalysis 仍估 FY2027 下半年資料中心運算營收高於市場共識約 20%。</p></div></div><div class="evidence"><span class="n">3</span><div><b>原作者等待的修正已經出現</b><p>NVDA 從五月高點回落約 14–16%。</p></div></div></div><div class="source-links"><a target="_blank" href="https://www.youtube.com/watch?v=ybd6x6qbIsU">原始影片</a><a target="_blank" href="https://www.cnbc.com/2026/07/06/nvidia-kyber-rack-system-delays-manufacturing-taiwan-rubin-chips-.html">Kyber 報導</a><a target="_blank" href="https://finance.yahoo.com/technology/article/nvidia-denies-report-its-next-generation-ai-server-faces-delays-says-roadmap-is-intact-183310296.html">NVIDIA 回應</a></div></div>'+
       '<div class="field"><span class="flabel">風險報酬（上行 = 論點成立、下行 = 論點失效，都由情境定，不是你拉出來的）</span><div class="callout"><h3>現價 $203.53 · NVDA</h3><div style="margin-top:8px;font-size:13px"><b>下行：</b>關鍵假設（守住雲端訂單／營收／毛利）破了 → 跌向 Bear ≈ <b class="mono">−'+failDown+'%</b>（$'+fail+'）。<br><b>上行：</b>論點成立 → Base ≈ <b class="mono">+'+upBase+'%</b>（$260–300）。<br><b>R/R ≈ '+(upBase/failDown).toFixed(1)+' : 1</b>。</div><div style="margin-top:12px"><div class="slider-top"><span>這個論點你最多願意賠多少（佔總資金）</span><span class="v mono" id="f1Loss">2%</span></div><input type="range" id="f1LossR" min="1" max="5" step="1" value="2"><div class="scale"><span>→ 部位上限 <span class="mono" id="f1Size"></span></span><span id="f1LossWarn">單筆風險常規 0.5–2%</span></div></div></div></div>'+
       '<div class="callout" id="f1Verdict"></div>'+
+      '<div id="f1Plan"></div>'+
       '<div class="stage-actions"><button class="primary" id="f1ToC">形成我的判斷 →</button></div>';
       var wrap=$('f1Assumptions');
       assumptions.forEach(function(a,i){var d=el('div','assumption'+(a[1]?' key':''),(a[1]?'<span style="font-size:10px;font-weight:750;color:var(--warn)">最關鍵</span> ':'')+'<b>'+a[0]+'</b><div class="choice-row"><button class="choice" data-v="believe" aria-pressed="false">相信</button><button class="choice" data-v="doubt" aria-pressed="false">存疑</button><button class="choice" data-v="disbelieve" aria-pressed="false">不相信</button></div>');d.querySelector('.choice-row').addEventListener('click',function(e){var b=e.target.closest('.choice');if(!b)return;pressGroup(this,b);F1.assumptions[i]=b.dataset.v;verdict()});wrap.appendChild(d)});
       function verdict(){var loss=+$('f1LossR').value,size=Math.min(100,loss/failDown*100),buffer=((P0-fail)/P0*100).toFixed(0);
         $('f1Loss').textContent=loss+'%';$('f1Size').textContent='≈ '+size.toFixed(0)+'% 資金';
         var lw=$('f1LossWarn');if(lw){lw.style.color=loss>3?'var(--neg)':'var(--ink-3)';lw.textContent=loss>3?'超過 3% 偏高，注意單筆風險':'單筆風險常規 0.5–2%';}
-        var d=$('f1Verdict'),key=F1.assumptions[1];
-        if(!key){d.className='callout';d.innerHTML='<p style="color:var(--ink-3);font-size:13px;margin:0">先標「最關鍵」那項假設，才會出結論。</p>';return;}
+        var d=$('f1Verdict'),pl=$('f1Plan'),key=F1.assumptions[1];
+        if(!key){d.className='callout';d.innerHTML='<p style="color:var(--ink-3);font-size:13px;margin:0">先標「最關鍵」那項假設，才會出結論。</p>';pl.innerHTML='';return;}
         var believed=[],doubted=[];[0,1,2].forEach(function(i){var v=F1.assumptions[i];if(v==='believe')believed.push(assumptions[i][0].replace(/。$/,''));else if(v==='doubt'||v==='disbelieve')doubted.push(assumptions[i][0].replace(/。$/,''));});
         var cls,status,zone;
         if(key==='believe'){cls=doubted.length?'warn':'';status=doubted.length?'偏多但有保留 · R/R 2:1，你對非關鍵項存疑':'偏多方 · 風險報酬約 '+(upBase/failDown).toFixed(1)+' : 1';zone='<b>你的進場區：</b>論點失效價 $'+fail+' 之上；現價 $203.53 距失效價約 '+buffer+'% 緩衝——越靠 $'+fail+' 安全邊際越大。這是你的區，不是我叫你買。';}
@@ -155,10 +158,19 @@
         var reasons=believed.length?believed.join('；'):'（你還沒標明相信哪些假設）';
         var flip=doubted.length?('你存疑：'+doubted.join('、')):'「NVIDIA 守住雲端訂單／營收／毛利」一鬆動 → 跌向 Bear ≈ −'+failDown+'%';
         d.className='callout '+cls;
-        d.innerHTML='<h3 style="font-size:19px">'+status+'</h3><p><b>理由：</b>'+reasons+'。<br><b>翻轉條件：</b>'+flip+' → 結論翻向。<br><b>催化劑：</b>下季財報（約 8/27）。<br>'+zone+'<br><b>部位：</b>願賠 '+loss+'% → 部位上限 ≈ '+size.toFixed(0)+'% 資金；主要出場是假設破掉，價格停損只防跳空。</p><p style="font-size:11px;opacity:.75;margin-top:8px">這是狀態與你的進場區，不是買賣或時點指令——扳機留給你。</p>';}
+        d.innerHTML='<h3 style="font-size:19px">'+status+'</h3><p><b>理由：</b>'+reasons+'。<br><b>翻轉條件：</b>'+flip+' → 結論翻向。<br><b>催化劑：</b>下季財報（約 8/27）。<br>'+zone+'<br><b>部位：</b>願賠 '+loss+'% → 部位上限 ≈ '+size.toFixed(0)+'% 資金；主要出場是假設破掉，價格停損只防跳空。</p><p style="font-size:11px;opacity:.75;margin-top:8px">這是狀態與你的進場區，不是買賣或時點指令——扳機留給你。</p>';
+        if(key==='believe'){pl.innerHTML=planCard([
+          ['進場區','現價 $203.53 到論點失效價 $'+fail+' 之上（約 '+buffer+'% 緩衝）——越接近 $'+fail+' 邊際越大'],
+          ['部位','願賠 '+loss+'% → 上限 ≈ '+size.toFixed(0)+'% 資金，分 2–3 批進'],
+          ['論點失效退場','守不住雲端訂單／營收／毛利 → 減或出（≈ Bear $'+fail+'）'],
+          ['價格停損','僅防跳空/滑價，不是主要出場（主要看假設）'],
+          ['時間 / 催化劑','下季財報（約 8/27）；未達預期則重評'],
+          ['監控',(doubted.length?('盯：'+doubted.join('、')):'盯關鍵假設是否鬆動')]
+        ],'草稿——這是你的計劃，不是買賣或時點指令。扳機留給你。');}
+        else{pl.innerHTML='';}}
       $('f1LossR').addEventListener('input',verdict);verdict();
       $('f1ToC').addEventListener('click',function(){rail('f1','C');unlock('f1C');buildF1C()});}
-            function buildF1C(){var body=$('f1CBody');body.innerHTML='<div class="field"><div class="slider-top"><span>看完分析，你現在有多想買？</span><span class="v mono" id="f1PostVal">'+F1.pre+' / 5</span></div><input type="range" id="f1Post" min="1" max="5" value="'+F1.pre+'"></div><div class="field"><span class="flabel">你的決定是？</span><div class="chips" id="f1Actions"><button class="chip" data-action="buy" aria-pressed="false">現在適合買</button><button class="chip" data-action="wait" aria-pressed="false">先等更多證據</button><button class="chip" data-action="skip" aria-pressed="false">放棄這個想法</button></div></div><div class="field"><span class="flabel">哪個變化會讓你重新分析？</span><div class="chips" id="f1Triggers"><button class="chip" aria-pressed="false">雲端客戶開始轉單</button><button class="chip" aria-pressed="false">營收／毛利預期下修</button><button class="chip" aria-pressed="false">Kyber 時程再次改變</button></div></div>'+watchBlock(['Kyber／Rubin Ultra 時程','大型雲端業者轉單','營收與毛利預期'])+'<div class="stage-actions"><button class="primary" id="f1Done" disabled>保存我的判斷</button></div>';
+                function buildF1C(){var body=$('f1CBody');body.innerHTML='<div class="field"><div class="slider-top"><span>看完分析，你現在有多想買？</span><span class="v mono" id="f1PostVal">'+F1.pre+' / 5</span></div><input type="range" id="f1Post" min="1" max="5" value="'+F1.pre+'"></div><div class="field"><span class="flabel">你的決定是？</span><div class="chips" id="f1Actions"><button class="chip" data-action="buy" aria-pressed="false">現在適合買</button><button class="chip" data-action="wait" aria-pressed="false">先等更多證據</button><button class="chip" data-action="skip" aria-pressed="false">放棄這個想法</button></div></div><div class="field"><span class="flabel">哪個變化會讓你重新分析？</span><div class="chips" id="f1Triggers"><button class="chip" aria-pressed="false">雲端客戶開始轉單</button><button class="chip" aria-pressed="false">營收／毛利預期下修</button><button class="chip" aria-pressed="false">Kyber 時程再次改變</button></div></div>'+watchBlock(['Kyber／Rubin Ultra 時程','大型雲端業者轉單','營收與毛利預期'])+'<div class="stage-actions"><button class="primary" id="f1Done" disabled>保存我的判斷</button></div>';
       $('f1Post').addEventListener('input',function(){$('f1PostVal').textContent=this.value+' / 5'});$('f1Actions').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F1.action=b.dataset.action;pressGroup(this,b);$('f1Done').disabled=false});$('f1Triggers').addEventListener('click',function(e){var b=e.target.closest('.chip');if(b)b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true')});bindWatch(body,function(){F1.monitor=true;markMonitored('f1Summary')});$('f1Done').addEventListener('click',function(){var triggers=selectedLabels($('f1Triggers'));summary('f1Summary','你的 NVDA 判斷已保存',[['工具給的','狀態·翻轉·催化（非指令）'],['你的決定',{buy:'現在適合買',wait:'等待',skip:'放棄'}[F1.action]],['重新分析條件',triggers.length?triggers.join('／'):'尚未選擇'],['持續監控',F1.monitor?'已開啟':'尚未開啟']])})}
 
     /* Flow 2 — preserve company/holding/intent; replace impossible forecast sliders with evidence-based scenarios */
@@ -173,6 +185,7 @@
         {k:'margin',label:'毛利：守在中段 70%',base:'新系統成本、HBM 與產品組合都在壓毛利——守得住是強假設（示意）。'},
         {k:'multiple',label:'估值：~18–19× FY27（至 2027/1）獲利倍數維持',base:'倍數已低於過去高峰，但仍需獲利持續兌現才撐得住（示意）。'}
       ];
+      var TRIG={growth:'營收成長跌破市場定價（28%）',margin:'毛利跌破中段 70%',multiple:'估值倍數回落（de-rating）'};
       var held=F2.hold==='yes';
       var ACT=held?[['add','我要加碼'],['keep','我維持'],['reduce','我要減碼'],['exit','我出清']]:[['buy','我要進場'],['wait','我先觀望'],['skip','我放棄']];
       var confLabel=held?'你現在對「在這裡加碼／調整」有多少把握？':'你現在對「這是好進場點」有多少信心？';
@@ -180,9 +193,10 @@
       '<div class="field"><span class="flabel">你信哪幾件？（三項都標，或用下面一句話快答）</span><div class="assumptions" id="f2Beliefs"></div></div>'+
       '<div class="field"><span class="flabel">一句話快答</span><div class="chips" id="f2Quick"><button class="chip" data-q="beat" aria-pressed="false">整體會超過（→ Bull）</button><button class="chip" data-q="meet" aria-pressed="false">差不多達到（→ Base）</button><button class="chip" data-q="miss" aria-pressed="false">達不到（→ Bear）</button></div></div>'+
       '<div class="decision" id="f2Reco" hidden></div>'+
+      '<div id="f2Plan"></div>'+
       '<div class="field"><span class="flabel">看完後，你決定怎麼做？</span><div class="chips" id="f2Actions"></div></div>'+
       '<div class="field"><div class="slider-top"><span>'+confLabel+'</span><span class="v mono" id="f2PostVal">'+F2.pre+' / 5</span></div><input type="range" id="f2Post" min="1" max="5" value="'+F2.pre+'"></div>'+
-      watchBlock(['毛利跌破中段 70%','雲端 AI 支出轉弱','下一代量產時程再延'])+
+      '<div class="monitor"><div class="monitor-head"><div><h3>讓 Hunch It 持續監控</h3><p>你標「存疑」的那項會排到第一顆並預選——它一鬆動就叫你回來。</p></div><button class="ghost watchBtn">開始監控</button></div><div class="watch-items" id="f2WatchItems"></div></div>'+
       '<div class="stage-actions"><button class="primary" id="f2Done" disabled>保存目前判斷</button></div>';
       var bw=$('f2Beliefs');
       ITEMS.forEach(function(it){var d=el('div','assumption','<b>'+it.label+'</b><div style="font-size:11px;color:var(--ink-3);margin-top:5px">'+it.base+'</div><div class="choice-row"><button class="choice" data-v="believe" aria-pressed="false">相信</button><button class="choice" data-v="doubt" aria-pressed="false">存疑</button><button class="choice" data-v="disbelieve" aria-pressed="false">不相信</button></div>');
@@ -190,9 +204,11 @@
         bw.appendChild(d);});
       $('f2Quick').addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;F2.quick=b.dataset.q;pressGroup(this,b);F2.beliefs={};bw.querySelectorAll('.choice').forEach(function(x){x.setAttribute('aria-pressed','false')});reco()});
       var aw=$('f2Actions');ACT.forEach(function(o){var b=el('button','chip',o[1]);b.dataset.action=o[0];b.setAttribute('aria-pressed','false');b.addEventListener('click',function(){F2.action=o[0];pressGroup(aw,b);checkF2Done()});aw.appendChild(b)});
-      function reco(){var d=$('f2Reco'),cls,band,status,pos,believed=[],doubted=[];
+      function updWatch(dk){var ord=dk.concat(ITEMS.map(function(it){return it.k}).filter(function(k){return dk.indexOf(k)<0}));$('f2WatchItems').innerHTML=ord.map(function(k){var f=dk.indexOf(k)>=0;return '<span class="watch'+(f?' watching':'')+'">'+TRIG[k]+(f?' · 你的翻轉條件':'')+'</span>'}).join('')}
+      updWatch([]);
+      function reco(){var d=$('f2Reco'),cls,band,status,pos,believed=[],doubted=[],dk=[];
         if(F2.quick){var q=F2.quick;if(q==='beat'){cls='';band='$325–350（Bull）';status='偏多方 · 你認為會超過市場定價';pos='現價 $203.53 遠低於這個區間——若真的超預期，空間很大';}else if(q==='meet'){cls='';band='$260–300（Base）';status='溫和偏多 · 你認為差不多達到';pos='現價 $203.53 低於區間下緣——前提成立就有到區間的空間';}else{cls='neg';band='$155–175（Bear）';status='偏空 · 你認為達不到定價';pos='現價 $203.53 高於這個區間上緣——依你的看法已透支';}}
-        else{if(Object.keys(F2.beliefs).length<3){d.hidden=true;checkF2Done();return;}var m={believe:1,doubt:0,disbelieve:-1},lean=0;ITEMS.forEach(function(it){var v=F2.beliefs[it.k];lean+=m[v];if(v==='believe')believed.push(it.label.split('：')[0]);else doubted.push(it.label.split('：')[0]);});
+        else{if(Object.keys(F2.beliefs).length<3){d.hidden=true;$('f2Plan').innerHTML='';updWatch([]);checkF2Done();return;}var m={believe:1,doubt:0,disbelieve:-1},lean=0;ITEMS.forEach(function(it){var v=F2.beliefs[it.k];lean+=m[v];if(v==='believe')believed.push(it.label.split('：')[0]);else{doubted.push(it.label.split('：')[0]);dk.push(it.k);}});
           if(lean>=2){cls='';band='$260–350（Base–Bull）';status='偏多方 · 三前提你多數相信';pos='現價 $203.53 低於區間下緣——前提成立則有到區間的空間';}
           else if(lean===1){cls='';band='$260–300（Base 附近）';status='溫和偏多 · 上行仍大於下行';pos='現價 $203.53 低於區間下緣——前提成立就有空間';}
           else if(lean===0){cls='warn';band='$175–260（Base–Bear 之間）';status='中性 · 你對其中幾項存疑，天平沒往哪邊倒';pos='現價 $203.53 落在區間中段——沒有明顯安全邊際';}
@@ -201,8 +217,20 @@
         var flip=F2.quick?'任一項核心前提（成長／毛利／倍數）開始鬆動':(doubted.length?('你存疑：'+doubted.join('、')):'之後開始懷疑任一項時');
         var heldNote=(held&&(cls===''))?'<br><b>你已持有：</b>加碼是把賭注變大——Bear 情境下你整體部位會承受更多，不是只賭這一筆。':'';
         d.className='callout '+cls;
-        d.innerHTML='<h3>'+status+'</h3><p><b>推導：</b>你信念的版本 → 對應價格 '+band+'；'+pos+'。<br><b>理由：</b>'+reasons+'。<br><b>翻轉條件：</b>'+flip+' → 結論翻向，設定監控它會通知你。<br><b>下一個驗證點：</b>下季財報（約 8/27）——在那之前，這是進場前提檢查，不是進場訊號。'+heldNote+'</p><p style="font-size:11px;opacity:.75;margin-top:9px">這是狀態與前提，不是買賣或時點指令——扳機留給你。</p>';
-        d.hidden=false;checkF2Done();}
+        d.innerHTML='<h3>'+status+'</h3><p><b>推導：</b>你信念的版本 → 對應價格 '+band+'；'+pos+'。<br><b>理由：</b>'+reasons+'。<br><b>翻轉條件：</b>'+flip+' → 結論翻向，已排進下方監控第一顆。<br><b>下一個驗證點：</b>下季財報（約 8/27）——在那之前，這是進場前提檢查，不是進場訊號。'+heldNote+'</p><p style="font-size:11px;opacity:.75;margin-top:9px">這是狀態與前提，不是買賣或時點指令——扳機留給你。</p>';
+        d.hidden=false;
+        updWatch(dk);
+        var pl=$('f2Plan');
+        if(cls==='neg'){pl.innerHTML='<div class="plan"><div class="plan-h">交易計劃（草稿）<span class="tagx">你決定</span></div><div class="plan-row"><span class="pk">結論</span><span class="pv">你偏空——目前無進場計劃。設一個「什麼改變才重啟」的條件與價位（≈ '+band+'）並監控。</span></div></div>';}
+        else{pl.innerHTML=planCard([
+          ['進場區','現價 $203.53'+(cls===''?'（低於你信念價值 '+band+' 下緣，有安全邊際；越低邊際越大）':'（落在區間中段，安全邊際有限，宜更小額）')],
+          ['部位','讓 Bear（−19%，$165）情境的總損失 ≤ 你能承受的最大虧損 → 反推部位，分 2–3 批'],
+          ['退場（論點失效）',flip.replace('你存疑：','')+' → 減或出'],
+          ['價格停損','僅防跳空/滑價，不是主要出場'],
+          ['時間 / 催化劑','下季財報（約 8/27）；未達預期則重評'],
+          ['監控',(doubted.length?doubted.join('、'):'三前提任一鬆動')+'（已預選）']
+        ],'草稿——這是你的計劃，不是買賣或時點指令。扳機留給你。');}
+        checkF2Done();}
       $('f2Post').addEventListener('input',function(){$('f2PostVal').textContent=this.value+' / 5'});
       function checkF2Done(){$('f2Done').disabled=!((F2.quick||Object.keys(F2.beliefs).length>=3)&&F2.action);}
       bindWatch(body,function(){F2.monitor=true;markMonitored('f2Summary')});
