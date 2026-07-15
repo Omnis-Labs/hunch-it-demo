@@ -130,7 +130,7 @@
     /* Flow 1 — preserve original input -> decomposition -> user response */
     var F1={source:null,loaded:false,preTouched:false,pre:3,assumptions:{},action:null,monitor:false};
     document.querySelectorAll('[data-source]').forEach(function(b){b.addEventListener('click',function(){F1.source=this.dataset.source;pressGroup(this.parentElement,this);$('f1SourceEntry').classList.add('show')})});
-    $('f1Load').addEventListener('click',function(){if(!$('f1SourceInput').value.trim())return;F1.loaded=true;$('f1Loaded').classList.add('show');checkF1A()});$('f1Pre').addEventListener('input',function(){F1.pre=+this.value;F1.preTouched=true;$('f1PreVal').textContent=this.value+' / 5';checkF1A()});function checkF1A(){$('f1ToB').disabled=!(F1.loaded&&F1.preTouched)}
+    $('f1Load').addEventListener('click',function(){if(!$('f1SourceInput').value.trim())return;F1.loaded=true;$('f1Loaded').classList.add('show');checkF1A()});(function(){var sc=document.querySelector('.source-chip[data-source]');if(sc){F1.source=sc.dataset.source;sc.setAttribute('aria-pressed','true');$('f1SourceEntry').classList.add('show');F1.loaded=true;$('f1Loaded').classList.add('show');}})();$('f1Pre').addEventListener('input',function(){F1.pre=+this.value;F1.preTouched=true;$('f1PreVal').textContent=this.value+' / 5';checkF1A()});function checkF1A(){$('f1ToB').disabled=!(F1.loaded&&F1.preTouched)}
     $('f1ToB').addEventListener('click',function(){rail('f1','B');unlock('f1B');buildF1B()});
     function buildF1B(){var body=$('f1BBody');var P0=203.53,failDown=19,upBase=38,fail=165;
       var assumptions=[['目前 Blackwell／Rubin 需求沒有因 Kyber 問題轉弱。',false],['NVIDIA 能在延期期間守住大型雲端業者的新增訂單、營收與毛利。',true],['股價修正已足以補償這個中期風險。',false]];
