@@ -1,6 +1,8 @@
 # Research Graph — 公司研究 Graph 工具原型
 
-線上版(GitHub Pages):**https://omnis-labs.github.io/hunch-it-demo/**
+線上版(GitHub Pages):
+- **https://omnis-labs.github.io/hunch-it-demo/graph/**
+- https://omnis-labs.github.io/hunch-it-demo/(同內容)
 
 純靜態、單一 HTML、無後端、無外部請求。丟一個問題,graph 繞著它長出來;
 研究 → 觀點 → 交易計畫 → 對答案覆盤,全程可 audit。
