@@ -19,6 +19,14 @@
   v21b 整合為一個產品:backend 以 /graph 靜態掛載本檔(React 前端新增「Research Graph」頁 iframe 嵌入);
      LIVE 時計畫卡多「⇪ 送進 Thesis Lab」— 觀點+方向+falsifier 組成論點文字 POST /thesis/decompose,
      LLM 拆成 claims 建 Thesis(DRAFT),後續表態→挑戰→arm(真監控)在 React Thesis Lab 完成。
+  v21d 任意台股 + agent 主動找題目:
+  1. 問任何台股(代號,如「2317 外資最近的籌碼動向?」)→ registerTwSession 動態註冊:lookup 名稱/產業、
+     真報價、通用假說集 H1–H4、現價推導錨點、真值骨架(fin/pv/tech/geo/val,卡片全吃 FinLab/TWSE 真資料)
+  2. /scan/daily 每日全市場掃描(月營收躍升+外資連買+借券回補+年線突破,低基期濾除)→ agent inbox
+     + landing LIVE 欄「今日掃描候選」
+  3. /settle/backtest falsifier 歷史回測 — 計畫卡顯示「此規則歷史觸發 N 次,觸發後 60D 平均 X% vs 未觸發 Y%」
+  4. 法說逐字稿(data/transcripts/<code>-<label>.txt 或 POST url)→ LLM 抽管理層 claims → mgmt 節點
+     真值列 + 進 /research/ask 問答 context
   v21c 台股專用 agent 層(FinLab 8/8 + TWSE OpenAPI):
   1. 節點真值:財務表現(真月營收 YoY/毛利率)、事件價量(外資連 N 日買賣超/借券變化)掛「● 真值」列;
      D-day 用真季報期限;falsifier 預設換成真資料錨點(月營收 YoY +20% / 毛利率 −5pp)
@@ -966,14 +974,22 @@ const ASML_EDGES=[
 let CORE_ID=null;
 function parseQuery(q,force){
   q=q||'';
-  let sess=force||(/nvda|輝達|nvidia/i.test(q)?'nvda':(/asml|艾司摩爾/i.test(q)?'asml':'tsmc'));
+  let sess=force||(/nvda|輝達|nvidia/i.test(q)?'nvda':(/asml|艾司摩爾/i.test(q)?'asml':null));
+  if(!sess){
+    // v21d 任意台股:query 帶 4 碼代號且非 2330 → 動態 tw session(需 backend;離線退回 tsmc demo)
+    const m=q.match(/(?:^|\D)(\d{4})(?:\D|$)/);
+    sess=(API&&m&&m[1]!=='2330'&&!/tsmc|台積/i.test(q))?'tw'+m[1]:'tsmc';
+  }
   const maps={
    tsmc:[[/毛利|財報|營收|獲利/,'fin'],[/地緣|管制|中國/,'geo'],[/競爭|市占|對手/,'comp'],[/供應|封裝|cowos|產能/i,'capex'],[/技術面|線圖|k線/i,'tech'],[/治理|管理層/,'mgmt'],[/客戶/,'cust']],
    nvda:[[/需求|訂單/,'nv-dem'],[/競爭|asic/i,'nv-comp'],[/管制|中國|地緣/,'nv-geo'],[/估值|貴|價位/,'nv-val']],
    asml:[[/euv 出貨|出貨/i,'a-euv'],[/管制|中國|地緣/,'a-geo'],[/訂單|backlog/i,'a-ord'],[/客戶/,'as-cust'],[/估值/,'as-val']]
   };
-  let core={tsmc:'val',nvda:'cowos',asml:'as-hna'}[sess];
-  for(const [re,id] of maps[sess]){if(re.test(q)){core=id;break}}
+  let core={tsmc:'val',nvda:'cowos',asml:'as-hna'}[sess]||'fin';
+  for(const [re,id] of (maps[sess]||[])){if(re.test(q)){core=id;break}}
+  if(sess.startsWith('tw')){
+    for(const [re,id] of [[/營收|財報|獲利|基本面|毛利/,'fin'],[/籌碼|外資|法人|借券|融資/,'pv'],[/技術|線圖|k線|均線/i,'tech'],[/風險|地緣|產業/,'geo'],[/估值|貴|便宜|本益比/,'val']]){if(re.test(q)){core=id;break}}
+  }
   return {sess,core};
 }
 /* 型別化邊:dep = 資料依賴(promote 光點沿這裡流),xcompany = 跨公司(portfolio 高度才顯示)*/
@@ -1151,6 +1167,11 @@ function startSession(sess){
   SESSION=sess;
   const sets={nvda:[NVDA_NODES,NVDA_EDGES],asml:[ASML_NODES,ASML_EDGES]};
   if(sets[sess]){NODES.length=0;NODES.push(...sets[sess][0]);EDGE_EXTRA.length=0;EDGE_EXTRA.push(...sets[sess][1])}
+  else if(sess.startsWith('tw')){   // v21d 任意台股:先向 backend 註冊真值 session 再生長
+    registerTwSession(sess.slice(2)).then(()=>startGrowth())
+      .catch(()=>{SESSION='tsmc';toast('無法載入該台股資料 — 退回 TSMC demo');startGrowth()});
+    return;
+  }
   startGrowth();
 }
 function startNVDA(){
@@ -1173,7 +1194,7 @@ function startGrowth(){
   }else{
     CORE_ID=parseQuery(qv,SESSION).core;
   }
-  const defQ={tsmc:'TSMC 值不值得在這個價位加碼?',nvda:'NVDA 的 CoWoS 依賴是不是風險?',asml:'ASML High-NA 需求何時兌現?'}[SESSION];
+  const defQ={tsmc:'TSMC 值不值得在這個價位加碼?',nvda:'NVDA 的 CoWoS 依賴是不是風險?',asml:'ASML High-NA 需求何時兌現?'}[SESSION]||((SESS_NAME[SESSION]||SESSION)+' 值得在這個價位買嗎?');
   RES_Q=qv||defQ;
   RES_ID=SESSION+'|'+qhash(RES_Q);   // session 身分 = 公司 × 問題 → 同公司不同問題各自存檔
   document.getElementById('queryTag').innerHTML='Q:<b> '+(qv?qv.replace(/</g,'&lt;'):defQ)+'</b>'+(qv&&SESSION==='tsmc'&&!/tsmc|台積/i.test(qv)?' <span style="color:var(--faint)">· demo 以 TSMC 示範</span>':'');
@@ -1838,7 +1859,7 @@ function openPane(n){
   } else if(n.id!=='val'&&n.id!=='plan'&&chatStore[n.id]){
     chat.innerHTML=chatStore[n.id];chat.dataset.dirty='1';
   } else if(n.root){
-    chat.innerHTML=SESSION==='nvda'?CARD.nvdaRoot():(SESSION==='asml'?CARD.asml():CARD.root());
+    chat.innerHTML=SESSION==='nvda'?CARD.nvdaRoot():(SESSION==='asml'?CARD.asml():(SESSION.startsWith('tw')&&CARD.twRoot?CARD.twRoot():CARD.root()));
   } else if(n.id==='nv-val'){
     chat.innerHTML=CARD['nv-val']()+`<div class="msg agent">${monChip(n)}</div>`;
   } else if(n.root2){
@@ -2864,6 +2885,7 @@ function planPaneLite(){
   </div>
   <div class="card"><h4>失效與出場</h4>
     <div class="arow"><b>✂ ${A.fals}</b> → 出場並重評<div class="from">← 此 session 的 falsifier · 對答案:${A.next.split(' ·')[0]}</div></div>
+    ${fbtRow()}
     <div class="arow"><b>收盤 < $${A.yr}</b>(年線)→ 減半<div class="from">← 技術風控</div></div>
     <div class="arow"><b>$${A.hi}(上緣)</b>→ 分批獲利 1/3</div>
   </div>
@@ -2934,6 +2956,7 @@ function planPaneHTML(){
     ${FACTS.settled
       ?`<div class="arow"><b class="up">✓ 已對答案:Q3 毛利率 ${FACTS.gmQ3}% ≥ 52%</b> — falsifier 通過,論點存活<div class="from">← Q3 法說會結算 · 校準 +1</div></div>`
       :`<div class="arow drl" onclick="drill('plan-fals',event)"><b>✂ ${falsText}</b> → 全數出場並停止加碼<div class="from">← bull #1 的 falsifier · 對答案:Q3 法說會</div></div>`}
+    ${fbtRow()}
     <div class="arow"><b>收盤 < $980</b>(年線 × falsifier 價格帶重合)→ 減半<div class="from">← 技術分析節點 · 破年線時基本面論點大概率同步失效</div></div>
     <div class="arow"><b>$${hi.toLocaleString()}(FV 上緣)</b>→ 分批獲利 1/3<div class="from">← 估值模型節點</div></div>
     ${bears?'<div class="arow"><b>bear 論點證據增強</b>(爬坡拖 3–4 季)→ 信念下修,凍結加碼<div class="from">← red team 論點</div></div>':''}
@@ -3625,7 +3648,7 @@ async function sendPlanToBackend(btn){
   try{
     const r=await fetch(API+'/thesis/decompose',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({text,ticker:LIVE_SYM[SESSION],side:conv>=6?'LONG':(conv<=3?'SHORT':''),
-                           venue:SESSION==='tsmc'?'shioaji':'alpaca'})});
+                           venue:(LIVE_SYM[SESSION]||'').endsWith('.TW')?'shioaji':'alpaca'})});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const t=await r.json();
     toast(`✓ Thesis #${t.id} 已建立 — 拆出 ${(t.claims||[]).length} 條 claims,到 Thesis Lab 表態→挑戰→arm`);
@@ -3643,25 +3666,37 @@ function thesisBridgeBtn(){
 
 /* ===== v21c 台股真值層:FinLab/TWSE 真值進節點、falsifier 真錨點、agent inbox、
    真 LLM 節點問答(/research/ask)、計畫 paper 掛單(/plan/execute)、checkpoints 自動對答案 ===== */
-let LIVE_TW=null, LIVE_POS=null;
+let LIVE_TW=null, LIVE_POS=null, LIVE_FBT=null, LIVE_TRN=null;
 async function tryLiveTw(){
-  if(SESSION!=='tsmc')return;
+  const sym=LIVE_SYM[SESSION]||'';
+  if(!sym.endsWith('.TW'))return;
+  const code=sym.replace('.TW','');
   const [f,c,cal]=await Promise.all([
-    jget('/twdata/fundamentals?symbol=2330.TW',120000),
-    jget('/twdata/chips?symbol=2330',120000),
-    jget('/twdata/calendar?symbol=2330',30000)]);
+    jget('/twdata/fundamentals?symbol='+sym,120000),
+    jget('/twdata/chips?symbol='+code,120000),
+    jget('/twdata/calendar?symbol='+code,30000)]);
   if(!f&&!c)return;
   LIVE_TW={f,c,cal};
   if(f&&f.latest){
-    if(f.latest.gm!=null)FACTS.gmQ3=f.latest.gm;
-    if(!FACTS.settled&&cal&&cal.dday_quarterly!=null)FACTS.dday=cal.dday_quarterly;
-    if(falsText.indexOf('52%')>=0){   // 只在使用者沒自訂過時,把示意 falsifier 換成真資料錨點
-      const gmThr=Math.max(50,Math.floor((f.latest.gm||60)-5));
-      falsText=`若月營收 YoY < +20%(下次公告 ${cal?cal.next_monthly_revenue:'每月10日'})或季毛利率 < ${gmThr}%,此論點作廢`;
-      const fi=document.getElementById('falsInput');if(fi)fi.value=falsText;
+    if(SESSION==='tsmc'){
+      if(f.latest.gm!=null)FACTS.gmQ3=f.latest.gm;
+      if(!FACTS.settled&&cal&&cal.dday_quarterly!=null)FACTS.dday=cal.dday_quarterly;
+      if(falsText.indexOf('52%')>=0){   // 只在使用者沒自訂過時,把示意 falsifier 換成真資料錨點
+        const gmThr=Math.max(50,Math.floor((f.latest.gm||60)-5));
+        falsText=`若月營收 YoY < +20%(下次公告 ${cal?cal.next_monthly_revenue:'每月10日'})或季毛利率 < ${gmThr}%,此論點作廢`;
+        const fi=document.getElementById('falsInput');if(fi)fi.value=falsText;
+      }
+    }else if(PLAN_ANCHORS[SESSION]&&cal){   // tw session:falsifier / 對答案時點 → 真值
+      PLAN_ANCHORS[SESSION].fals=`月營收 YoY < +0%(下次公告 ${cal.next_monthly_revenue})`+(f.latest.gm!=null?`,或毛利率 < ${Math.max(0,Math.floor(f.latest.gm-5))}%`:'');
+      PLAN_ANCHORS[SESSION].next=`下次月營收 · D-${cal.dday_monthly}`;
     }
-    alog(`LIVE·TW 真值:月營收 ${f.latest.rev_100m.toLocaleString()} 億(YoY ${f.latest.rev_yoy>0?'+':''}${f.latest.rev_yoy}%)· 毛利率 ${f.latest.gm}%`+(c?` · 外資連 ${Math.abs(c.foreign_streak)} 日${c.foreign_streak<0?'賣':'買'}超`:''));
+    alog(`LIVE·TW 真值:月營收 ${f.latest.rev_100m.toLocaleString()} 億(YoY ${f.latest.rev_yoy>0?'+':''}${f.latest.rev_yoy}%)`+(f.latest.gm!=null?` · 毛利率 ${f.latest.gm}%`:'')+(c?` · 外資連 ${Math.abs(c.foreign_streak)} 日${c.foreign_streak<0?'賣':'買'}超`:''));
   }
+  jget('/settle/backtest?symbol='+code+'&metric=monthly_revenue_yoy&op='+encodeURIComponent('<')+'&threshold=20',60000).then(b=>{if(b&&b.observations)LIVE_FBT=b});
+  jget('/research/transcript?symbol='+code,20000).then(t=>{
+    if(t&&t.available){LIVE_TRN=t;
+      twLine(document.getElementById('n-mgmt'),`● 逐字稿 claims ${t.claims.length} 條(${t.source})`,'var(--act)');
+      alog('管理層節點:法說逐字稿已抽出 '+t.claims.length+' 條 claims — 節點問答可引用')}});
   applyTwFaces();
   if(!window._twFaceTimer)window._twFaceTimer=setInterval(applyTwFaces,4000); // 節點面重繪後補回真值列
   updatePlanDock();
@@ -3678,7 +3713,7 @@ function applyTwFaces(){
 async function liveInboxFetch(){
   const r=await jget('/agent/inbox?limit=8',10000);
   if(!r||!Array.isArray(r.notes))return;
-  const items=r.notes.filter(n=>n.severity!=='info').slice(0,3).map(n=>({t:'🤖 '+n.title,st:'AGENT'}));
+  const items=r.notes.filter(n=>n.severity!=='info'||n.kind==='scan').slice(0,4).map(n=>({t:'🤖 '+n.title,st:'AGENT'}));
   if(items.length){LIVE_NEWS=[...items,...LIVE_NEWS.filter(x=>x.st!=='AGENT')].slice(0,6);renderLiveNews()}
 }
 async function livePosFetch(){
@@ -3687,7 +3722,7 @@ async function livePosFetch(){
 }
 function livePlanRow(){
   if(!LIVE||!LIVE_POS)return'';
-  const sym=LIVE_SYM[SESSION],venue=SESSION==='tsmc'?'shioaji':'alpaca';
+  const sym=LIVE_SYM[SESSION],venue=(LIVE_SYM[SESSION]||'').endsWith('.TW')?'shioaji':'alpaca';
   const v=(LIVE_POS.venues||{})[venue]||{};
   const pos=(v.positions||[]).find(p=>p.symbol===sym);
   const open=(LIVE_POS.orders||[]).filter(o=>o.symbol===sym&&o.status==='new'&&String(o.client_order_id||'').startsWith('plan-')).length;
@@ -3721,14 +3756,15 @@ async function sendPlanOrders(btn){
   if(conv<4){toast(`信念 ${conv}/10 — 計畫方向是減碼/迴避,不掛買單`);return}
   const A=PLAN_ANCHORS[SESSION]||{};
   const base=A.price||FACTS.price;
+  const q=(LIVE_SYM[SESSION]||'').endsWith('.TW')?1000:20;   // 台股整張,美股 20 股
   let entries=SESSION==='tsmc'
-    ?[{price:Math.round(base*0.965),qty:1000},{price:Math.round(base*0.90),qty:1000}]
-    :[{price:A.e1||Math.round(base*0.95),qty:20},{price:A.e2||Math.round(base*0.88),qty:20}];
+    ?[{price:Math.round(base*0.965),qty:q},{price:Math.round(base*0.90),qty:q}]
+    :[{price:A.e1||Math.round(base*0.95),qty:q},{price:A.e2||Math.round(base*0.88),qty:q}];
   if(conv<6)entries=entries.slice(-1);
   ordersSending=true;if(btn){btn.textContent='⚡ 掛單中…';btn.style.opacity=.6}
   try{
     const r=await fetch(API+'/plan/execute',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({symbol:LIVE_SYM[SESSION],venue:SESSION==='tsmc'?'shioaji':'alpaca',side:'LONG',
+      body:JSON.stringify({symbol:LIVE_SYM[SESSION],venue:(LIVE_SYM[SESSION]||'').endsWith('.TW')?'shioaji':'alpaca',side:'LONG',
                            entries,label:RES_Q||SESS_NAME[SESSION],session_key:RES_ID})});
     const d=await r.json();
     if(!r.ok)throw new Error(d.detail||('HTTP '+r.status));
@@ -3744,20 +3780,94 @@ async function sendPlanOrders(btn){
 }
 /* falsifier → 真 checkpoints:月營收(每月10日)+ 季毛利(季報期限)到期自動對答案進校準 */
 async function armLiveCheckpoints(tid){
-  if(SESSION!=='tsmc'||!LIVE_TW||!LIVE_TW.cal)return;
+  const sym=LIVE_SYM[SESSION]||'';
+  if(!sym.endsWith('.TW')||!LIVE_TW||!LIVE_TW.cal)return;
+  const code=sym.replace('.TW','');
   const flag='cpArmed.'+RES_ID;
   if(localStorage.getItem(flag))return;
   const conf=Math.min(.95,Math.max(.1,convCalc()/10));
-  const gmThr=Math.max(50,Math.floor((LIVE_TW.f&&LIVE_TW.f.latest.gm||60)-5));
+  const yoyThr=SESSION==='tsmc'?20:0;
+  const gm=LIVE_TW.f&&LIVE_TW.f.latest.gm;
+  const gmThr=gm!=null?Math.max(0,Math.floor(gm-5)):null;
   const mk=(m,op,thr,due,label)=>fetch(API+'/checkpoints',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({symbol:'2330',metric:m,op,threshold:thr,due,label,confidence:conf,session_key:RES_ID,thesis_id:tid||null})});
-  const rs=await Promise.allSettled([
-    mk('monthly_revenue_yoy','>=',20,LIVE_TW.cal.next_monthly_revenue,'月營收 YoY ≥ +20%(AI 需求假說)'),
-    mk('gross_margin','>=',gmThr,LIVE_TW.cal.next_quarterly_deadline,`季毛利率 ≥ ${gmThr}%(結構獲利假說)`)]);
+    body:JSON.stringify({symbol:code,metric:m,op,threshold:thr,due,label,confidence:conf,session_key:RES_ID,thesis_id:tid||null})});
+  const jobs=[mk('monthly_revenue_yoy','>=',yoyThr,LIVE_TW.cal.next_monthly_revenue,`月營收 YoY ≥ +${yoyThr}%(營收動能假說)`)];
+  if(gmThr!=null)jobs.push(mk('gross_margin','>=',gmThr,LIVE_TW.cal.next_quarterly_deadline,`季毛利率 ≥ ${gmThr}%(獲利結構假說)`));
+  const rs=await Promise.allSettled(jobs);
   if(rs.some(x=>x.status==='fulfilled'&&x.value.ok)){
     localStorage.setItem(flag,'1');
     toast(`⚑ 已建立真實 checkpoints:${LIVE_TW.cal.next_monthly_revenue} 月營收 / ${LIVE_TW.cal.next_quarterly_deadline} 季報 — 到期 agent 自動對答案進校準`);
   }
+}
+/* ===== v21d 任意台股 session:代號 → 動態註冊真值 session(名稱/報價/假說集/錨點/骨架/卡片) ===== */
+async function registerTwSession(code){
+  const sess='tw'+code, sym=code+'.TW';
+  const [lk,v]=await Promise.all([jget('/twdata/lookup?q='+code,25000),jget('/valuation?symbol='+encodeURIComponent(sym),25000)]);
+  const hit=lk&&lk.matches&&lk.matches[0];
+  if(!hit&&!(v&&v.price))throw new Error('unknown symbol');
+  const name=(hit&&hit.name)||code, industry=(hit&&hit.industry)||'';
+  const price=v&&v.price?Math.round(v.price*10)/10:0;
+  SESS_NAME[sess]=name; LIVE_SYM[sess]=sym; if(v&&v.price)LIVE_Q[sess]=v;
+  H_SETS[sess]={
+    H1:{l:'H1 營收動能持續(YoY 正成長)',wA:1.5,wR:-2,def:()=>'doubt'},
+    H2:{l:'H2 獲利率維持或改善',wA:1,wR:-1.5,def:()=>'doubt'},
+    H3:{l:'H3 籌碼面支撐(外資/借券不惡化)',wA:1,wR:-1,def:()=>'doubt'},
+    H4:{l:'H4 產業/系統性風險可控',wA:.5,wR:-1.5,def:()=>'doubt'}};
+  const P=price||100;
+  PLAN_ANCHORS[sess]={price:P,cur:'$',e1:Math.round(P*.95),e1l:'−5% 回檔帶',e2:Math.round(P*.88),e2l:'−12% 深回檔',
+    yr:Math.round(P*.8),hi:Math.round(P*1.15),
+    fals:'月營收 YoY 轉負(下次公告每月 10 日)',next:'下次月營收 · 每月 10 日',
+    ev:['月營收 YoY(FinLab 真值)','外資/借券籌碼(FinLab 真值)'],
+    cons:['估值錨點為現價係數推導,非模型','骨架 session — 表態即可生成計畫']};
+  NODES.length=0;NODES.push(
+    {id:'root',x:50,y:44,root:true,label:name,kpi:(price?('$'+price+' · '):'')+sym+(industry?' · '+industry:'')},
+    {id:'fin',x:27,y:22,label:'財務動能',src:2,spark:[10,11,12,12,13,14],kpi:'月營收 / 毛利率 <b>真值</b>'},
+    {id:'pv',x:73,y:22,label:'籌碼與價量',src:2,spark:[9,10,12,11,13,12],kpi:'外資 / 融資 / 借券 <b>真值</b>'},
+    {id:'tech',x:17,y:56,label:'技術分析 · 短中長',src:1,badge:'TECH · 日 K',spark:[9,11,10,13,15,14],kpi:'90D 真 K 線'},
+    {id:'geo',x:83,y:56,label:'產業與風險',src:1,spark:[8,9,10,11,12,12],kpi:industry||'題材 / 重訊'},
+    {id:'open',x:67,y:80,dashed:true,label:'未決問題'},
+    {id:'val',x:50,y:13,model:true,label:'估值 · 概覽',kpi:v&&v.pe?('P/E <b>'+(Math.round(v.pe*10)/10)+'x</b>'):'—'});
+  EDGE_EXTRA.length=0;EDGE_EXTRA.push(
+    {from:'fin',to:'val',cls:'dep',label:'依賴:營收動能 → 估值'},
+    {from:'pv',to:'tech',cls:'dep',label:'依賴:籌碼 → 價量結構'});
+  jget('/marketdata/ohlcv?symbol='+encodeURIComponent(sym)+'&limit=36',25000).then(o=>{if(o&&o.bars&&o.bars.length>5)LIVE_BARS[sess]=o.bars});
+  CARD.twRoot=twRootCard; CARD.root=twRootCard;
+  CARD.fin=twFinCard; CARD.pv=twPvCard;
+  CARD.tech=()=>GEN.tech.card(sess);
+  CARD.val=()=>`<div class="msg agent"><div class="card"><h4>估值概覽(LIVE)</h4><div class="arow"><b>${price?('現價 $'+price+(v.pe?' · P/E '+Math.round(v.pe*10)/10+'x':'')+(v.eps?' · EPS '+v.eps:'')):'報價暫不可得'}</b><div class="from">← /valuation(yfinance)</div></div><div class="arow">計畫錨點:回檔帶 $${PLAN_ANCHORS[sess].e1} / 深回檔 $${PLAN_ANCHORS[sess].e2} / 年線近似 $${PLAN_ANCHORS[sess].yr}<div class="from">← 現價係數推導,非模型</div></div>${srcRow('LIVE 報價')}</div></div>`;
+  CARD.geo=()=>`<div class="msg agent"><div class="card"><h4>${industry||'產業'} · 風險與重訊</h4><div class="arow"><b>直接在下方輸入框問</b>(重大訊息/產業風險 — 答案只用 TWSE/FinLab 真資料並標出處)<div class="from">← /research/ask</div></div>${srcRow('TWSE 重大訊息 · LIVE')}</div></div>`;
+  CARD.open=()=>`<div class="msg agent"><div class="card"><h4>未決問題</h4><div class="arow">研究裡還沒有答案的問題丟這裡;在任何節點問完,值得追的用釘選留下</div>${srcRow('研究流程')}</div></div>`;
+  paneData.fin={sub:'FinLab 真值 · 月頻'};paneData.pv={sub:'FinLab 籌碼 · 日頻'};paneData.tech={sub:'90D 日 K(真)'};
+  paneData.geo={sub:'TWSE 重訊'};paneData.val={sub:'LIVE 報價'};paneData.open={sub:'待解'};paneData.root={sub:'真值總覽'};
+  alog('已註冊台股 session:'+name+'('+sym+')— 真值骨架就緒');
+}
+function twRootCard(){
+  const f=LIVE_TW&&LIVE_TW.f,c=LIVE_TW&&LIVE_TW.c,cal=LIVE_TW&&LIVE_TW.cal;
+  return `<div class="msg agent"><div class="card"><h4>${SESS_NAME[SESSION]}(${LIVE_SYM[SESSION]})· 真值總覽</h4>
+    ${f&&f.latest?`<div class="arow"><b>月營收 ${f.latest.rev_100m.toLocaleString()} 億(YoY ${f.latest.rev_yoy>0?'+':''}${f.latest.rev_yoy}%)</b>${f.latest.gm!=null?` · 毛利率 ${f.latest.gm}%`:''}<div class="from">← FinLab</div></div>`:'<div class="arow">基本面載入中 — 稍候重開此卡</div>'}
+    ${c?`<div class="arow">外資連 <b class="${c.foreign_streak>=0?'up':'down'}">${Math.abs(c.foreign_streak)} 日${c.foreign_streak<0?'賣超':'買超'}</b>${c.borrow_balance?` · 借券 20 日 ${c.borrow_balance.chg20d>0?'+':''}${c.borrow_balance.chg20d.toLocaleString()} 張`:''}<div class="from">← FinLab 籌碼</div></div>`:''}
+    ${cal?`<div class="arow">下次對答案:月營收 ${cal.next_monthly_revenue}(D-${cal.dday_monthly})· 季報 ${cal.next_quarterly_deadline}(D-${cal.dday_quarterly})<div class="from">← 行事曆</div></div>`:''}
+    <div style="font-size:10.5px;color:var(--dim);margin-top:6px">↳ 到交易計畫卡對四條假說表態 → 生成你的計畫;任何節點輸入框都是真資料問答</div>
+    ${srcRow('LIVE · FinLab / TWSE')}</div></div>`;
+}
+function twFinCard(){
+  const f=LIVE_TW&&LIVE_TW.f;
+  if(!f)return `<div class="msg agent"><div class="card"><h4>財務動能</h4><div class="arow">真值載入中 — 關掉重開此卡</div></div></div>`;
+  const rows=f.monthly_revenue.slice(-6).map(m=>`<tr><td>${m.date.slice(0,7)}</td><td>${m.rev_100m.toLocaleString()}</td><td>${m.yoy==null?'—':`<span class="${m.yoy>=0?'up':'down'}">${m.yoy>0?'+':''}${m.yoy}%</span>`}</td></tr>`).join('');
+  const gms=f.gross_margin.slice(-4).map(g=>`${g.q} <b>${g.gm}%</b>`).join(' · ');
+  return `<div class="msg agent"><div class="card"><h4>月營收 · 近 6 月(FinLab 真值)</h4><table class="scTable"><tr><th>月</th><th>營收(億)</th><th>YoY</th></tr>${rows}</table></div>${gms?`<div class="card"><h4>季毛利率</h4><div class="arow">${gms}</div></div>`:''}${srcRow('FinLab monthly_revenue / 營業毛利率')}</div>`;
+}
+function twPvCard(){
+  const c=LIVE_TW&&LIVE_TW.c;
+  if(!c)return `<div class="msg agent"><div class="card"><h4>籌碼與價量</h4><div class="arow">真值載入中 — 關掉重開此卡</div></div></div>`;
+  const rows=c.foreign_net.slice(-8).map(r=>`<tr><td>${r.date.slice(5)}</td><td class="${r.lots>=0?'up':'down'}">${r.lots>0?'+':''}${r.lots.toLocaleString()}</td></tr>`).join('');
+  return `<div class="msg agent"><div class="card"><h4>外資買賣超 · 近 8 日(張)</h4><table class="scTable"><tr><th>日</th><th>張</th></tr>${rows}</table><div class="arow">連續:<b class="${c.foreign_streak>=0?'up':'down'}">${Math.abs(c.foreign_streak)} 日${c.foreign_streak<0?'賣超':'買超'}</b></div></div><div class="card"><h4>融資 / 借券</h4>${c.margin_balance?`<div class="arow">融資餘額 <b>${c.margin_balance.latest.toLocaleString()}</b> 張(20 日 ${c.margin_balance.chg20d>0?'+':''}${c.margin_balance.chg20d.toLocaleString()})</div>`:''}${c.borrow_balance?`<div class="arow">借券餘額 <b>${c.borrow_balance.latest.toLocaleString()}</b> 張(20 日 ${c.borrow_balance.chg20d>0?'+':''}${c.borrow_balance.chg20d.toLocaleString()})</div>`:''}${srcRow('FinLab 籌碼 · 日頻')}</div></div>`;
+}
+/* falsifier 歷史回測列(計畫卡「失效與出場」)*/
+function fbtRow(){
+  if(!LIVE||!LIVE_FBT||!LIVE_FBT.breaches)return'';
+  const b=LIVE_FBT;
+  return `<div class="arow"><b>⏳ 歷史回測</b>:「${b.rule}」過去 ${b.observations} 次公告觸發 <b>${b.breaches}</b> 次;觸發後 ${b.horizon_days}D 平均 <span class="${b.avg_fwd_breach<0?'down':'up'}">${b.avg_fwd_breach>0?'+':''}${b.avg_fwd_breach}%</span> vs 未觸發 ${b.avg_fwd_ok>0?'+':''}${b.avg_fwd_ok}%(觸發後下跌率 ${Math.round(b.breach_down_rate*100)}%)<div class="from">← /settle/backtest · FinLab 全史</div></div>`;
 }
 window.addEventListener('load',()=>setTimeout(tryLive,300));
 
