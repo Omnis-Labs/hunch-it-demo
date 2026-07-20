@@ -15,6 +15,17 @@
   2. 底部 dock 整理 — 價格疊圖固定停靠在時間軸上方、hint 隨 dock 高度上移、倉位列改到頂部置中(估值節點下移讓位)
   3. hint 文案精簡為單行;影子節點移位不再撞 zoom 按鈕
   4. Esc / 點背景可關閉 modal、overlay、內部視圖;畫布加點陣底紋(隨縮放縮放,強化空間感)
+  v21 LIVE 資料接線(Phase A):偵測 event-trader backend(:8000 或 ?api=),連上即真報價/真日 K/真事件/已觸發監控,斷線無縫退回模擬。
+  v21b 整合為一個產品:backend 以 /graph 靜態掛載本檔(React 前端新增「Research Graph」頁 iframe 嵌入);
+     LIVE 時計畫卡多「⇪ 送進 Thesis Lab」— 觀點+方向+falsifier 組成論點文字 POST /thesis/decompose,
+     LLM 拆成 claims 建 Thesis(DRAFT),後續表態→挑戰→arm(真監控)在 React Thesis Lab 完成。
+  v21c 台股專用 agent 層(FinLab 8/8 + TWSE OpenAPI):
+  1. 節點真值:財務表現(真月營收 YoY/毛利率)、事件價量(外資連 N 日買賣超/借券變化)掛「● 真值」列;
+     D-day 用真季報期限;falsifier 預設換成真資料錨點(月營收 YoY +20% / 毛利率 −5pp)
+  2. 節點對話 LIVE 走 /research/ask:LLM 只用 FinLab/TWSE/事件庫真資料回答並標出處,離線退回腳本
+  3. 計畫「⚡ 掛單(paper)」→ /plan/execute 真 Order FSM 限價分批(信念 <4 拒掛、4–5 只掛觀察單);
+     計畫卡顯示真 paper 倉位/掛單;「⇪ 送進 Thesis Lab」成功後自動建立 2 個真 checkpoints
+     (月營收 10 日/季報期限到期 agent 自動對答案 → Brier 校準),landing LIVE 事件欄併入 agent inbox 警訊
   v20.1 計畫與主線不只 TSMC:
   1. H_SETS/PLAN_ANCHORS per session — NVDA/ASML 各有假說集(AI 需求/CoWoS 上限/ASIC 侵蝕…、High-NA/backlog…)
      與價位錨點;觀點機制(表態+風險偏好→方向/信念/進場框架)三個 session 通用
@@ -1416,9 +1427,11 @@ const CANDLES=(function(){
   return out;
 })();
 function candleSVG(events,lines){
-  const D=CANDLES,W=470,H=158,VH=32,PH=H-VH-16;
+  const live=(typeof liveCandles==='function')?liveCandles():null;
+  const D=live||CANDLES,W=470,H=158,VH=32,PH=H-VH-16;
   let lo=1e9,hi=0;D.forEach(c=>{lo=Math.min(lo,c[2]);hi=Math.max(hi,c[1])});
-  (lines||[]).forEach(L=>{lo=Math.min(lo,L.p-8);hi=Math.max(hi,L.p+8)});
+  if(live){events=null;lines=(lines||[]).filter(L=>L.p>lo&&L.p<hi)}   // 真 K 線:示意事件不疊、超界示意價位不畫
+  else (lines||[]).forEach(L=>{lo=Math.min(lo,L.p-8);hi=Math.max(hi,L.p+8)});
   const X=i=>8+i*(W-16)/D.length, bw=(W-16)/D.length*.6;
   const Y=p=>12+(hi-p)/(hi-lo)*PH;
   let sv='';
@@ -1439,6 +1452,7 @@ function candleSVG(events,lines){
     const xm=(X(ev.i)+bw/2).toFixed(1);
     sv+=`<circle cx="${xm}" cy="${(Y(D[ev.i][1])-6).toFixed(1)}" r="3.2" fill="${ev.c||'#E8B44F'}"/><text x="${xm}" y="${(Y(D[ev.i][1])-12).toFixed(1)}" font-size="8.5" fill="#A9B2C5" text-anchor="middle">${ev.t}</text>`;
   });
+  if(live)sv+=`<text x="10" y="14" font-size="9" fill="#3FBF8A">● LIVE · ${(LIVE_SYM[SESSION]||'')} 日 K(yfinance)</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${sv}</svg>`;
 }
 /* ---- 下鑽明細庫:每個卡片元素點進去的「放大鏡」層(寫死模擬) ---- */
@@ -2854,11 +2868,12 @@ function planPaneLite(){
     <div class="arow"><b>$${A.hi}(上緣)</b>→ 分批獲利 1/3</div>
   </div>
   <div class="card"><h4>部位 · 時程</h4>
-    <div class="arow"><b>無既有倉位</b> — 首倉上限 NAV 5%(骨架 session 未接倉位 overlay)<div class="from">← 風控預設</div></div>
+    ${livePlanRow()||'<div class="arow"><b>無既有倉位</b> — 首倉上限 NAV 5%(骨架 session 未接倉位 overlay)<div class="from">← 風控預設</div></div>'}
     <div class="arow"><b>${A.next}</b>:財報對答案後 agent 重算本計畫<div class="from">← 事件時點</div></div>
     <div class="arow"><b>節點監控 ${monitored.size} 個</b>${monitored.size?'<button class="tbtn" style="margin-left:6px" onclick="openMonList()">查看清單</button>':'(在節點卡內「⚑ 掛監控」)'}<div class="from">← 節點觸發器</div></div>
   </div>
-  <div class="srcRow">本計畫由你的觀點 × ${SESS_NAME[SESSION]} 錨點即時組裝 · 示意數字非即時行情</div>
+  ${LIVE?`<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">${thesisBridgeBtn()}</div>`:''}
+  <div class="srcRow">本計畫由你的觀點 × ${SESS_NAME[SESSION]} 錨點即時組裝${LIVE?' · <span style="color:var(--bull)">● LIVE 現價</span>':' · 示意數字非即時行情'}</div>
   </div>`;
 }
 function planPaneHTML(){
@@ -2937,8 +2952,9 @@ function planPaneHTML(){
       ?`<div class="arow"><b class="up">Q3 法說會已結算</b>:falsifier ✓ · 校準已更新 · 下一事件:Q4 法說會(~10 月)<div class="from">← 事件結算 · 校準儀表板</div></div>`
       :`<div class="arow"><b>Q3 法說會 · D-${FACTS.dday}</b>:帶著 ${opens} 個未決問題進場,會後 agent 對答案並<b>自動重算本計畫</b><div class="from">← 事件倒數 checklist</div></div>`}
     <div class="arow"><b>節點監控 ${monitored.size} 個</b>${monitored.size?'(觸發即標記本計畫待重審)<button class="tbtn" style="margin-left:6px" onclick="openMonList()">查看清單</button>':'(尚未掛 — 可在節點卡內「⚑ 掛監控」)'}<div class="from">← 節點觸發器</div></div>
+    ${livePlanRow()}
   </div>
-  <div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap"><button class="tbtn" onclick="copyPlan()">⧉ 複製全文</button><button class="tbtn" onclick="openMemo()">⇩ 連同備忘錄匯出</button><button class="tbtn" style="border-color:rgba(224,104,122,.5);color:var(--bear)" onclick="preMortem()">☠ pre-mortem</button></div>
+  <div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap"><button class="tbtn" onclick="copyPlan()">⧉ 複製全文</button><button class="tbtn" onclick="openMemo()">⇩ 連同備忘錄匯出</button><button class="tbtn" style="border-color:rgba(224,104,122,.5);color:var(--bear)" onclick="preMortem()">☠ pre-mortem</button>${thesisBridgeBtn()}</div>
   <div class="srcRow">本計畫由 ◆ 論點欄 × ◈ 估值模型 × ◉ 倉位 overlay 即時組裝 · 2026-07-19 · 上游任一更新即標記待重審</div>
   </div>`;
 }
@@ -3511,6 +3527,239 @@ window.addEventListener('load',()=>{
   else if(b==='tsmc')startGrowth();
   else if(b==='asml')openASML();
 });
+
+/* ================= v21:LIVE 資料接線(Phase A — event-trader backend) =================
+   有 backend(:8000)→ 報價/K 線/新聞事件/監控命中改用真資料;沒有 → 安靜降級回模擬。
+   卡片內的敘事數字仍為模擬(誠實分界:LIVE 標記只出現在真資料上)。 */
+const API=(()=>{
+  const q=new URLSearchParams(location.search).get('api');
+  if(q)return q.replace(/\/$/,'');
+  if(location.protocol==='file:'||['localhost','127.0.0.1'].includes(location.hostname))return 'http://localhost:8000';
+  return '';
+})();
+let LIVE=false; const LIVE_Q={}, LIVE_BARS={}; let LIVE_NEWS=[];
+const LIVE_SYM={tsmc:'2330.TW',nvda:'NVDA',asml:'ASML'};
+async function jget(p,ms){
+  const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||5000);
+  try{const r=await fetch(API+p,{signal:c.signal});clearTimeout(t);return r.ok?await r.json():null}
+  catch(e){clearTimeout(t);return null}
+}
+function fmtPx(sess,p){return sess==='tsmc'?Math.round(p).toLocaleString():(+p).toFixed(2)}
+function applyLiveQuote(sess){
+  const v=LIVE_Q[sess];if(!v||!v.price)return;
+  if(sess==='tsmc')FACTS.price=Math.round(v.price);
+  else if(PLAN_ANCHORS[sess])PLAN_ANCHORS[sess].price=+(+v.price).toFixed(2);
+  if(step>=1&&SESSION===sess){
+    const rk=document.querySelector('#n-root .kpi');
+    if(rk)rk.innerHTML=`$${fmtPx(sess,v.price)} · <span class="up">● LIVE</span>${v.pe?' · P/E '+(+v.pe).toFixed(1):''}`;
+  }
+  renderLiveTape();
+}
+function renderLiveTape(){
+  const tape=document.getElementById('s0tape');
+  if(!tape||!LIVE)return;
+  const seg=Object.entries(LIVE_SYM).map(([sess,sym])=>{
+    const v=LIVE_Q[sess];return v&&v.price?`${SESS_NAME[sess]} $${fmtPx(sess,v.price)}`:null;
+  }).filter(Boolean).join(' · ');
+  if(seg)tape.innerHTML=seg+' · <em class="up">● LIVE(event-trader backend)</em>';
+}
+function liveCandles(){
+  const bars=LIVE_BARS[SESSION];
+  if(!bars)return null;
+  return bars.map(b=>[b.o,b.h,b.l,b.c,Math.max(3,(b.v||0)>0?Math.min(24,8+12*(b.v/(bars.reduce((a,x)=>a+(x.v||0),0)/bars.length||1)) ):9)]);
+}
+async function liveNewsFetch(){
+  const r=await jget('/events?limit=6',8000);
+  if(r&&Array.isArray(r.events)&&r.events.length){
+    LIVE_NEWS=r.events.slice(0,4).map(e=>({t:e.claim||e.title||e.headline||e.type||'(untitled)',st:(e.status||'').toUpperCase(),tier:e.max_tier||e.tier||''}));
+    renderLiveNews();
+  }
+}
+function renderLiveNews(){
+  const ev=document.getElementById('s0events');
+  if(!ev||!LIVE_NEWS.length)return;
+  const box=document.querySelector('#s0grid > div:last-child');
+  if(!box)return;
+  let feed=document.getElementById('liveFeed');
+  if(!feed){box.insertAdjacentHTML('beforeend','<h2 style="margin-top:18px">LIVE 事件(查核後)</h2><div id="liveFeed"></div>');feed=document.getElementById('liveFeed')}
+  feed.innerHTML=LIVE_NEWS.map(n=>`<div class="s0ev"><span class="dot" style="background:${n.st==='CONFIRMED'?'var(--bull)':(n.st==='UNVERIFIED'?'var(--faint)':'var(--amber)')}"></span><span><span class="evTag tN">LIVE</span><b>${String(n.t).slice(0,42)}</b>${n.st?' · '+n.st:''}</span></div>`).join('');
+}
+async function liveMonitorsFetch(){
+  const r=await jget('/monitors/fired',6000);
+  if(r&&Array.isArray(r.fired)&&r.fired.length){
+    alog('backend 監控命中 '+r.fired.length+' 條(/monitors/fired)— 回首頁事件欄可見');
+    const ev=document.getElementById('s0events');
+    if(ev&&!document.getElementById('liveFired'))ev.insertAdjacentHTML('afterbegin',`<div class="s0ev" id="liveFired"><span class="dot" style="background:var(--bear)"></span><span><span class="evTag tN">LIVE</span><b>backend 監控命中 ${r.fired.length} 條</b> — armed thesis 的翻轉條件已觸發</span></div>`);
+  }
+}
+async function tryLive(){
+  if(!API)return;
+  const h=await jget('/health',2500);
+  if(!h)return;
+  LIVE=true;
+  alog('LIVE:已連上 event-trader backend('+API+')— 報價 / K 線 / 事件改用真資料');
+  await Promise.allSettled(Object.entries(LIVE_SYM).map(async([sess,sym])=>{
+    const v=await jget('/valuation?symbol='+encodeURIComponent(sym),12000);
+    if(v&&v.price){LIVE_Q[sess]=v;applyLiveQuote(sess)}
+  }));
+  await Promise.allSettled(Object.entries(LIVE_SYM).map(async([sess,sym])=>{
+    const o=await jget('/marketdata/ohlcv?symbol='+encodeURIComponent(sym)+'&limit=36',15000);
+    if(o&&o.bars&&o.bars.length>5)LIVE_BARS[sess]=o.bars;
+  }));
+  liveNewsFetch();liveMonitorsFetch();
+  tryLiveTw();liveInboxFetch();livePosFetch();
+  updatePlanDock();refreshPlanCard();
+}
+/* v21b 資料橋:計畫 → backend Thesis Lab(拆彈機)。把觀點組成論點文字 POST /thesis/decompose,
+   LLM 拆成 claims;後續表態→挑戰→arm(產生真監控)在 React 前端的 Thesis Lab 完成 */
+let thesisSending=false;
+async function sendPlanToBackend(btn){
+  if(!LIVE){toast('未連上 backend — 無法送進 Thesis Lab');return}
+  if(thesisSending)return;
+  thesisSending=true;if(btn){btn.textContent='⇪ 傳送中…';btn.style.opacity=.6}
+  const conv=convCalc(),dir=planDirection(),A=PLAN_ANCHORS[SESSION];
+  const st=Object.keys(hSet()).map(h=>`${hLabel(h)}:${stanceOf(h)==='accept'?'接受':(stanceOf(h)==='reject'?'拒絕':'存疑')}`).join(';');
+  const fals=SESSION==='tsmc'?falsText:A.fals;
+  const text=`研究問題:${RES_Q||SESS_NAME[SESSION]}。觀點表態 — ${st}。風險偏好 ${PROFILE.risk},推導方向:${dir}(信念 ${conv}/10)。Falsifier:${fals}。進場錨點:現價 ${A.cur}${A.price}${A.e1?`,回檔帶 ${A.cur}${A.e1}(${A.e1l})/ ${A.cur}${A.e2}(${A.e2l}),年線 ${A.cur}${A.yr}`:''}。`;
+  toast('⇪ 送進 Thesis Lab — LLM 拆解 claims 中(約 10–30 秒)…');
+  try{
+    const r=await fetch(API+'/thesis/decompose',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text,ticker:LIVE_SYM[SESSION],side:conv>=6?'LONG':(conv<=3?'SHORT':''),
+                           venue:SESSION==='tsmc'?'shioaji':'alpaca'})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const t=await r.json();
+    toast(`✓ Thesis #${t.id} 已建立 — 拆出 ${(t.claims||[]).length} 條 claims,到 Thesis Lab 表態→挑戰→arm`);
+    if(btn){btn.textContent=`✓ 已送 Thesis #${t.id}`;btn.style.opacity=1}
+    armLiveCheckpoints(t.id);
+  }catch(e){
+    toast('✗ 送出失敗:'+(e&&e.message||e));
+    if(btn){btn.textContent='⇪ 送進 Thesis Lab';btn.style.opacity=1}
+  }
+  thesisSending=false;
+}
+function thesisBridgeBtn(){
+  return LIVE?`<button class="tbtn" style="border-color:rgba(127,166,242,.5);color:var(--act)" onclick="sendPlanToBackend(this)">⇪ 送進 Thesis Lab</button><button class="tbtn" style="border-color:rgba(94,205,151,.5);color:var(--bull)" onclick="sendPlanOrders(this)">⚡ 掛單(paper)</button>`:'';
+}
+
+/* ===== v21c 台股真值層:FinLab/TWSE 真值進節點、falsifier 真錨點、agent inbox、
+   真 LLM 節點問答(/research/ask)、計畫 paper 掛單(/plan/execute)、checkpoints 自動對答案 ===== */
+let LIVE_TW=null, LIVE_POS=null;
+async function tryLiveTw(){
+  if(SESSION!=='tsmc')return;
+  const [f,c,cal]=await Promise.all([
+    jget('/twdata/fundamentals?symbol=2330.TW',120000),
+    jget('/twdata/chips?symbol=2330',120000),
+    jget('/twdata/calendar?symbol=2330',30000)]);
+  if(!f&&!c)return;
+  LIVE_TW={f,c,cal};
+  if(f&&f.latest){
+    if(f.latest.gm!=null)FACTS.gmQ3=f.latest.gm;
+    if(!FACTS.settled&&cal&&cal.dday_quarterly!=null)FACTS.dday=cal.dday_quarterly;
+    if(falsText.indexOf('52%')>=0){   // 只在使用者沒自訂過時,把示意 falsifier 換成真資料錨點
+      const gmThr=Math.max(50,Math.floor((f.latest.gm||60)-5));
+      falsText=`若月營收 YoY < +20%(下次公告 ${cal?cal.next_monthly_revenue:'每月10日'})或季毛利率 < ${gmThr}%,此論點作廢`;
+      const fi=document.getElementById('falsInput');if(fi)fi.value=falsText;
+    }
+    alog(`LIVE·TW 真值:月營收 ${f.latest.rev_100m.toLocaleString()} 億(YoY ${f.latest.rev_yoy>0?'+':''}${f.latest.rev_yoy}%)· 毛利率 ${f.latest.gm}%`+(c?` · 外資連 ${Math.abs(c.foreign_streak)} 日${c.foreign_streak<0?'賣':'買'}超`:''));
+  }
+  applyTwFaces();
+  if(!window._twFaceTimer)window._twFaceTimer=setInterval(applyTwFaces,4000); // 節點面重繪後補回真值列
+  updatePlanDock();
+}
+function twLine(el,html,color){
+  if(!el||el.querySelector('.twlive'))return;
+  el.insertAdjacentHTML('beforeend',`<div class="twlive" style="font-family:var(--mono);font-size:9.5px;margin-top:3px;color:${color||'var(--bull)'}">${html}</div>`);
+}
+function applyTwFaces(){
+  if(!LIVE_TW)return;const{f,c}=LIVE_TW;
+  if(f&&f.latest)twLine(document.getElementById('n-fin'),`● 真值 GM ${f.latest.gm}% · 營收 YoY ${f.latest.rev_yoy>0?'+':''}${f.latest.rev_yoy}%`);
+  if(c)twLine(document.getElementById('n-pv'),`● 外資連 ${Math.abs(c.foreign_streak)} 日${c.foreign_streak<0?'賣':'買'}超 · 借券 20 日 ${c.borrow_balance?(c.borrow_balance.chg20d>0?'+':'')+c.borrow_balance.chg20d.toLocaleString()+' 張':'—'}`,c.foreign_streak<0?'var(--bear)':'var(--bull)');
+}
+async function liveInboxFetch(){
+  const r=await jget('/agent/inbox?limit=8',10000);
+  if(!r||!Array.isArray(r.notes))return;
+  const items=r.notes.filter(n=>n.severity!=='info').slice(0,3).map(n=>({t:'🤖 '+n.title,st:'AGENT'}));
+  if(items.length){LIVE_NEWS=[...items,...LIVE_NEWS.filter(x=>x.st!=='AGENT')].slice(0,6);renderLiveNews()}
+}
+async function livePosFetch(){
+  const r=await jget('/portfolio/positions',15000);
+  if(r)LIVE_POS=r;
+}
+function livePlanRow(){
+  if(!LIVE||!LIVE_POS)return'';
+  const sym=LIVE_SYM[SESSION],venue=SESSION==='tsmc'?'shioaji':'alpaca';
+  const v=(LIVE_POS.venues||{})[venue]||{};
+  const pos=(v.positions||[]).find(p=>p.symbol===sym);
+  const open=(LIVE_POS.orders||[]).filter(o=>o.symbol===sym&&o.status==='new'&&String(o.client_order_id||'').startsWith('plan-')).length;
+  return `<div class="arow"><b>paper 帳戶(真)</b>:${pos?`持有 ${pos.qty} 股 @ $${pos.avg_price}`:'無持倉'}${open?` · 掛單中 <b>${open}</b> 筆限價`:''}<div class="from">← LIVE /portfolio/positions</div></div>`;
+}
+/* 節點對話:LIVE 時改打 /research/ask(只用真資料、標出處),離線退回腳本 */
+const fakeAskSim=fakeAsk;
+fakeAsk=function(inp){
+  if(!LIVE){fakeAskSim(inp);return}
+  const q=inp.value.trim();if(!q)return;
+  dirtyChat();
+  const chat=document.getElementById('chat');
+  const node=document.getElementById('paneTitle').textContent;
+  const wid='askW'+Date.now();
+  chat.insertAdjacentHTML('beforeend',`<div class="msg user">${q.replace(/</g,'&lt;')}</div><div class="msg agent" id="${wid}">⋯ 正在查真資料回答(FinLab / TWSE / 事件庫)</div>`);
+  inp.value='';chat.scrollTop=chat.scrollHeight;
+  fetch(API+'/research/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({question:q,symbol:LIVE_SYM[SESSION]||'2330.TW',node})})
+  .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .then(d=>{const w=document.getElementById(wid);
+    if(w)w.innerHTML=d.answer.replace(/</g,'&lt;').replace(/\n/g,'<br>')+`<div class="from">← LIVE 真資料:${d.blocks.join(' / ')}</div>`;
+    chat.scrollTop=chat.scrollHeight})
+  .catch(()=>{const w=document.getElementById(wid);if(w)w.textContent='(backend 查詢失敗 — 稍後再試)'});
+};
+/* 計畫 → paper 限價單(走真 Order FSM);信念 <4 不掛,4–5 只掛深批觀察單 */
+let ordersSending=false;
+async function sendPlanOrders(btn){
+  if(!LIVE){toast('未連上 backend — 無法掛單');return}
+  if(ordersSending)return;
+  const conv=convCalc();
+  if(conv<4){toast(`信念 ${conv}/10 — 計畫方向是減碼/迴避,不掛買單`);return}
+  const A=PLAN_ANCHORS[SESSION]||{};
+  const base=A.price||FACTS.price;
+  let entries=SESSION==='tsmc'
+    ?[{price:Math.round(base*0.965),qty:1000},{price:Math.round(base*0.90),qty:1000}]
+    :[{price:A.e1||Math.round(base*0.95),qty:20},{price:A.e2||Math.round(base*0.88),qty:20}];
+  if(conv<6)entries=entries.slice(-1);
+  ordersSending=true;if(btn){btn.textContent='⚡ 掛單中…';btn.style.opacity=.6}
+  try{
+    const r=await fetch(API+'/plan/execute',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({symbol:LIVE_SYM[SESSION],venue:SESSION==='tsmc'?'shioaji':'alpaca',side:'LONG',
+                           entries,label:RES_Q||SESS_NAME[SESSION],session_key:RES_ID})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||('HTTP '+r.status));
+    const n=d.placed.length;
+    toast(n?`⚡ paper 已掛 ${n} 筆限價(${d.placed.map(p=>'$'+p.limit).join(' / ')})— 走真 Order FSM`:'今日此計畫已掛過(冪等)');
+    if(btn){btn.textContent=n?`✓ 已掛 ${n} 筆`:'✓ 已在單簿';btn.style.opacity=1}
+    livePosFetch();
+  }catch(e){
+    toast('✗ 掛單失敗:'+(e&&e.message||e));
+    if(btn){btn.textContent='⚡ 掛單(paper)';btn.style.opacity=1}
+  }
+  ordersSending=false;
+}
+/* falsifier → 真 checkpoints:月營收(每月10日)+ 季毛利(季報期限)到期自動對答案進校準 */
+async function armLiveCheckpoints(tid){
+  if(SESSION!=='tsmc'||!LIVE_TW||!LIVE_TW.cal)return;
+  const flag='cpArmed.'+RES_ID;
+  if(localStorage.getItem(flag))return;
+  const conf=Math.min(.95,Math.max(.1,convCalc()/10));
+  const gmThr=Math.max(50,Math.floor((LIVE_TW.f&&LIVE_TW.f.latest.gm||60)-5));
+  const mk=(m,op,thr,due,label)=>fetch(API+'/checkpoints',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({symbol:'2330',metric:m,op,threshold:thr,due,label,confidence:conf,session_key:RES_ID,thesis_id:tid||null})});
+  const rs=await Promise.allSettled([
+    mk('monthly_revenue_yoy','>=',20,LIVE_TW.cal.next_monthly_revenue,'月營收 YoY ≥ +20%(AI 需求假說)'),
+    mk('gross_margin','>=',gmThr,LIVE_TW.cal.next_quarterly_deadline,`季毛利率 ≥ ${gmThr}%(結構獲利假說)`)]);
+  if(rs.some(x=>x.status==='fulfilled'&&x.value.ok)){
+    localStorage.setItem(flag,'1');
+    toast(`⚑ 已建立真實 checkpoints:${LIVE_TW.cal.next_monthly_revenue} 月營收 / ${LIVE_TW.cal.next_quarterly_deadline} 季報 — 到期 agent 自動對答案進校準`);
+  }
+}
+window.addEventListener('load',()=>setTimeout(tryLive,300));
 
 /* ================= 關閉手勢:Esc / 點背景 ================= */
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeOv(o.id)}));
