@@ -27,6 +27,12 @@
   3. /settle/backtest falsifier 歷史回測 — 計畫卡顯示「此規則歷史觸發 N 次,觸發後 60D 平均 X% vs 未觸發 Y%」
   4. 法說逐字稿(data/transcripts/<code>-<label>.txt 或 POST url)→ LLM 抽管理層 claims → mgmt 節點
      真值列 + 進 /research/ask 問答 context
+  v21e 介面互通與即時化:
+  1. ?boot=<代號> 直接開該股 session(React heatmap「🔬 開研究」/Cmd-K/Agent Inbox 掃描候選都經此進入);
+     「⇪ 送進 Thesis Lab」成功後按鈕變「開拆彈 ↗」postMessage 讓 host 跳到 Thesis Lab 對應條目
+  2. 問答漸進顯示(組區塊→LLM 撰寫中)+ 答案〔來源:x〕變可點 chip,跳到對應真值節點
+  3. ⇄ 雙股真值對照(工具列):兩檔台股月營收 YoY/毛利/外資/借券/PE 真值並排,較優高亮,一鍵開任一檔研究
+  4. 哨兵 30s 輪詢 — 新觸發即 toast「對應計畫待重審」;agent inbox 60s 併入 landing
   v21c 台股專用 agent 層(FinLab 8/8 + TWSE OpenAPI):
   1. 節點真值:財務表現(真月營收 YoY/毛利率)、事件價量(外資連 N 日買賣超/借券變化)掛「● 真值」列;
      D-day 用真季報期限;falsifier 預設換成真資料錨點(月營收 YoY +20% / 毛利率 −5pp)
@@ -643,6 +649,7 @@
 <button id="returnBtn" onclick="showResume()">模擬 5 天後回訪 ↻</button>
 <div id="zoomCtl">
   <button id="feedBtn" onclick="openFeed()" title="Agent 活動 feed" style="position:relative">🤖<span id="feedDot"></span></button>
+  <button onclick="openTwCompare()" title="雙股真值對照(LIVE)">⇄</button>
   <button onclick="replayHint()" title="重看上一條提示">?</button>
   <button onclick="openCtxMenu(innerWidth/2,innerHeight/2)" title="新增分析節點(= 畫布右鍵)">✚</button>
   <button onclick="portView()" title="Portfolio 層(跨公司)">◫</button>
@@ -897,6 +904,18 @@
     <tr><td>共同風險</td><td class="diff" colspan="2" style="text-align:center;cursor:pointer" onclick="closeOv('cmpOv');(document.getElementById('home').style.display==='block')&&backFromHome();gotoGeo()">出口管制升級 — 點擊定位到 TSMC 的「地緣風險」節點 →</td></tr>
   </table>
   <div style="font-size:10.5px;color:var(--faint);margin-top:10px">↳ 共同主題節點自動對齊,高亮 = 顯著差異</div>
+</div></div>
+
+<!-- v21e 雙股真值對照(LIVE) -->
+<div class="ov" id="cmpTwOv"><div class="ovCard" style="width:min(560px,94vw)">
+  <button class="ovClose" onclick="closeOv('cmpTwOv')">✕</button>
+  <h2>⇄ 雙股真值對照</h2>
+  <div style="display:flex;gap:8px;margin:10px 0">
+    <input id="cmpA" placeholder="代號 A(如 2330)" style="flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none">
+    <input id="cmpB" placeholder="代號 B(如 2317)" style="flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none" onkeydown="if(event.key==='Enter')runTwCompare()">
+    <button class="tbtn" onclick="runTwCompare()">對照</button>
+  </div>
+  <div id="cmpTwBody" style="font-size:12px;color:var(--dim)">輸入兩檔台股代號 — 月營收 YoY、毛利率、外資、借券、P/E 全用真值並排,較優者高亮。</div>
 </div></div>
 
 <!-- 法說會 checklist -->
@@ -3536,6 +3555,16 @@ function restoreXNode(x){
 }
 window.addEventListener('load',()=>{
   initStage0();
+  // v21e:?boot=<symbol> — React host(heatmap/Cmd-K/inbox)或 deep link 直接開該股 session
+  const bq=new URLSearchParams(location.search).get('boot');
+  if(bq){
+    const code=bq.toUpperCase().replace('.TW','');
+    const inp=document.getElementById('searchInput');
+    if(/^\d{4}$/.test(code)&&code!=='2330'){inp.value=code+' 值得在這個價位買嗎?';startSession('tw'+code);return}
+    if(code==='NVDA'){inp.value='NVDA 的 CoWoS 依賴是不是風險?';startSession('nvda');return}
+    if(code==='ASML'){inp.value='ASML High-NA 需求何時兌現?';startSession('asml');return}
+    inp.value='TSMC 值不值得在這個價位加碼?';startGrowth();return;
+  }
   const b=sessionStorage.getItem('boot');   // session 切換時的重載接力
   if(!b)return;
   sessionStorage.removeItem('boot');
@@ -3607,13 +3636,20 @@ function renderLiveNews(){
   if(!feed){box.insertAdjacentHTML('beforeend','<h2 style="margin-top:18px">LIVE 事件(查核後)</h2><div id="liveFeed"></div>');feed=document.getElementById('liveFeed')}
   feed.innerHTML=LIVE_NEWS.map(n=>`<div class="s0ev"><span class="dot" style="background:${n.st==='CONFIRMED'?'var(--bull)':(n.st==='UNVERIFIED'?'var(--faint)':'var(--amber)')}"></span><span><span class="evTag tN">LIVE</span><b>${String(n.t).slice(0,42)}</b>${n.st?' · '+n.st:''}</span></div>`).join('');
 }
+/* 哨兵即時化:30s 輪詢,新觸發即 toast(既存的只入 feed 不打擾) */
+const FIRED_SEEN=new Set(); let firedInit=false;
 async function liveMonitorsFetch(){
   const r=await jget('/monitors/fired',6000);
-  if(r&&Array.isArray(r.fired)&&r.fired.length){
-    alog('backend 監控命中 '+r.fired.length+' 條(/monitors/fired)— 回首頁事件欄可見');
+  if(!(r&&Array.isArray(r.fired)))return;
+  const fresh=r.fired.filter(m=>!FIRED_SEEN.has(m.id));
+  fresh.forEach(m=>FIRED_SEEN.add(m.id));
+  if(fresh.length){
+    if(firedInit)fresh.forEach(m=>toast(`⚑ 哨兵觸發:${m.label||m.kind}(${m.symbol||''})— 對應計畫待重審`));
+    else alog('backend 監控命中 '+fresh.length+' 條(/monitors/fired)— 回首頁事件欄可見');
     const ev=document.getElementById('s0events');
-    if(ev&&!document.getElementById('liveFired'))ev.insertAdjacentHTML('afterbegin',`<div class="s0ev" id="liveFired"><span class="dot" style="background:var(--bear)"></span><span><span class="evTag tN">LIVE</span><b>backend 監控命中 ${r.fired.length} 條</b> — armed thesis 的翻轉條件已觸發</span></div>`);
+    if(ev&&!document.getElementById('liveFired'))ev.insertAdjacentHTML('afterbegin',`<div class="s0ev" id="liveFired"><span class="dot" style="background:var(--bear)"></span><span><span class="evTag tN">LIVE</span><b>backend 監控命中 ${FIRED_SEEN.size} 條</b> — armed thesis 的翻轉條件已觸發</span></div>`);
   }
+  firedInit=true;
 }
 async function tryLive(){
   if(!API)return;
@@ -3631,6 +3667,7 @@ async function tryLive(){
   }));
   liveNewsFetch();liveMonitorsFetch();
   tryLiveTw();liveInboxFetch();livePosFetch();
+  setInterval(liveMonitorsFetch,30000);setInterval(liveInboxFetch,60000);   // 哨兵/收件匣即時化
   updatePlanDock();refreshPlanCard();
 }
 /* v21b 資料橋:計畫 → backend Thesis Lab(拆彈機)。把觀點組成論點文字 POST /thesis/decompose,
@@ -3652,7 +3689,8 @@ async function sendPlanToBackend(btn){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const t=await r.json();
     toast(`✓ Thesis #${t.id} 已建立 — 拆出 ${(t.claims||[]).length} 條 claims,到 Thesis Lab 表態→挑戰→arm`);
-    if(btn){btn.textContent=`✓ 已送 Thesis #${t.id}`;btn.style.opacity=1}
+    if(btn){btn.textContent=`✓ Thesis #${t.id} → 開拆彈 ↗`;btn.style.opacity=1;
+      btn.onclick=()=>{try{parent.postMessage({type:'open-thesis',id:t.id},'*')}catch(_){/* standalone */}}}
     armLiveCheckpoints(t.id);
   }catch(e){
     toast('✗ 送出失敗:'+(e&&e.message||e));
@@ -3737,16 +3775,32 @@ fakeAsk=function(inp){
   const chat=document.getElementById('chat');
   const node=document.getElementById('paneTitle').textContent;
   const wid='askW'+Date.now();
-  chat.insertAdjacentHTML('beforeend',`<div class="msg user">${q.replace(/</g,'&lt;')}</div><div class="msg agent" id="${wid}">⋯ 正在查真資料回答(FinLab / TWSE / 事件庫)</div>`);
+  chat.insertAdjacentHTML('beforeend',`<div class="msg user">${q.replace(/</g,'&lt;')}</div><div class="msg agent" id="${wid}">⋯ 正在組真資料區塊(FinLab / TWSE / 事件庫)</div>`);
   inp.value='';chat.scrollTop=chat.scrollHeight;
+  const stT=setTimeout(()=>{const w=document.getElementById(wid);if(w)w.innerHTML='✓ 真資料區塊已備 · LLM 撰寫回答中(約 10–30 秒)…'},1600);
   fetch(API+'/research/ask',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({question:q,symbol:LIVE_SYM[SESSION]||'2330.TW',node})})
   .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
-  .then(d=>{const w=document.getElementById(wid);
-    if(w)w.innerHTML=d.answer.replace(/</g,'&lt;').replace(/\n/g,'<br>')+`<div class="from">← LIVE 真資料:${d.blocks.join(' / ')}</div>`;
+  .then(d=>{clearTimeout(stT);const w=document.getElementById(wid);
+    if(w){
+      const html=d.answer.replace(/</g,'&lt;').replace(/\n/g,'<br>')
+        .replace(/〔來源[::]([a-zA-Z_ \/、,]+)〕/g,(m,b1)=>{
+          const tok=(b1.match(/[a-zA-Z_]+/)||[''])[0].toLowerCase();
+          return `<span class="tbtn" style="padding:0 7px;font-size:10px;margin-left:3px" onclick="openBlockNode('${tok}')">來源:${b1.trim()}</span>`});
+      w.innerHTML=html+`<div class="from">← LIVE 真資料:${d.blocks.join(' / ')}(出處可點,跳到對應節點)</div>`;
+    }
     chat.scrollTop=chat.scrollHeight})
-  .catch(()=>{const w=document.getElementById(wid);if(w)w.textContent='(backend 查詢失敗 — 稍後再試)'});
+  .catch(()=>{clearTimeout(stT);const w=document.getElementById(wid);if(w)w.textContent='(backend 查詢失敗 — 稍後再試)'});
 };
+/* 出處 chip → 對應節點 */
+const BLOCK_NODE={fundamentals:'fin',chips:'pv',calendar:'fin',announcements:'geo',events:'pv',transcript:'mgmt'};
+function openBlockNode(b){
+  const id=BLOCK_NODE[(b||'').toLowerCase()];
+  const n=id&&NODES.find(x=>x.id===id);
+  if(!n){toast('此出處沒有對應節點');return}
+  if(focusNode)closePane();
+  setTimeout(()=>openPane(n),120);
+}
 /* 計畫 → paper 限價單(走真 Order FSM);信念 <4 不掛,4–5 只掛深批觀察單 */
 let ordersSending=false;
 async function sendPlanOrders(btn){
@@ -3862,6 +3916,58 @@ function twPvCard(){
   if(!c)return `<div class="msg agent"><div class="card"><h4>籌碼與價量</h4><div class="arow">真值載入中 — 關掉重開此卡</div></div></div>`;
   const rows=c.foreign_net.slice(-8).map(r=>`<tr><td>${r.date.slice(5)}</td><td class="${r.lots>=0?'up':'down'}">${r.lots>0?'+':''}${r.lots.toLocaleString()}</td></tr>`).join('');
   return `<div class="msg agent"><div class="card"><h4>外資買賣超 · 近 8 日(張)</h4><table class="scTable"><tr><th>日</th><th>張</th></tr>${rows}</table><div class="arow">連續:<b class="${c.foreign_streak>=0?'up':'down'}">${Math.abs(c.foreign_streak)} 日${c.foreign_streak<0?'賣超':'買超'}</b></div></div><div class="card"><h4>融資 / 借券</h4>${c.margin_balance?`<div class="arow">融資餘額 <b>${c.margin_balance.latest.toLocaleString()}</b> 張(20 日 ${c.margin_balance.chg20d>0?'+':''}${c.margin_balance.chg20d.toLocaleString()})</div>`:''}${c.borrow_balance?`<div class="arow">借券餘額 <b>${c.borrow_balance.latest.toLocaleString()}</b> 張(20 日 ${c.borrow_balance.chg20d>0?'+':''}${c.borrow_balance.chg20d.toLocaleString()})</div>`:''}${srcRow('FinLab 籌碼 · 日頻')}</div></div>`;
+}
+/* ===== v21e 雙股真值對照 ===== */
+function openTwCompare(){
+  if(!LIVE){toast('雙股對照需要 backend LIVE');return}
+  const a=document.getElementById('cmpA');
+  if(a&&!a.value){const s=LIVE_SYM[SESSION]||'';if(s.endsWith('.TW'))a.value=s.replace('.TW','')}
+  openOv('cmpTwOv');
+}
+async function fetchCmpSide(code){
+  const sym=code+'.TW';
+  const [f,c,v,lk]=await Promise.all([
+    jget('/twdata/fundamentals?symbol='+sym,120000),
+    jget('/twdata/chips?symbol='+code,120000),
+    jget('/valuation?symbol='+encodeURIComponent(sym),25000),
+    jget('/twdata/lookup?q='+code,25000)]);
+  return {code,name:(lk&&lk.matches&&lk.matches[0]&&lk.matches[0].name)||code,f,c,v};
+}
+async function runTwCompare(){
+  const a=(document.getElementById('cmpA').value||'').replace(/\.TW/i,'').trim();
+  const b=(document.getElementById('cmpB').value||'').replace(/\.TW/i,'').trim();
+  const el=document.getElementById('cmpTwBody');
+  if(!/^\d{4}$/.test(a)||!/^\d{4}$/.test(b)){el.textContent='請輸入兩個 4 碼台股代號';return}
+  el.textContent='抓真值中…(FinLab / 報價,首次約數秒)';
+  try{
+    const [A,B]=await Promise.all([fetchCmpSide(a),fetchCmpSide(b)]);
+    const g=(o,path)=>{try{return path.split('.').reduce((x,k)=>x==null?null:x[k],o)}catch(_){return null}};
+    const pct=x=>x==null?'—':((x>0?'+':'')+x+'%');
+    const num=x=>x==null?'—':Number(x).toLocaleString();
+    const M=[
+      ['月營收 YoY',g(A,'f.latest.rev_yoy'),g(B,'f.latest.rev_yoy'),pct,1],
+      ['最新月營收(億)',g(A,'f.latest.rev_100m'),g(B,'f.latest.rev_100m'),num,0],
+      ['季毛利率',g(A,'f.latest.gm'),g(B,'f.latest.gm'),x=>x==null?'—':x+'%',1],
+      ['外資連續(日,+買/−賣)',g(A,'c.foreign_streak'),g(B,'c.foreign_streak'),num,1],
+      ['借券 20 日變化(張)',g(A,'c.borrow_balance.chg20d'),g(B,'c.borrow_balance.chg20d'),num,-1],
+      ['P/E',g(A,'v.pe'),g(B,'v.pe'),x=>x==null?'—':(Math.round(x*10)/10)+'x',-1],
+      ['現價',g(A,'v.price'),g(B,'v.price'),num,0]];
+    el.innerHTML='<table class="scTable"><tr><th>真值</th><th>'+a+' '+A.name+'</th><th>'+b+' '+B.name+'</th></tr>'
+      +M.map(([l,x,y,fmt,dir])=>{
+        const hx=dir!==0&&x!=null&&y!=null&&(x-y)*dir>0, hy=dir!==0&&x!=null&&y!=null&&(y-x)*dir>0;
+        return `<tr><td>${l}</td><td${hx?' class="diff"':''}>${fmt(x)}</td><td${hy?' class="diff"':''}>${fmt(y)}</td></tr>`}).join('')
+      +'</table>'
+      +'<div style="font-size:10.5px;color:var(--faint);margin-top:8px">高亮 = 該欄較優 · FinLab / TWSE / yfinance 真值</div>'
+      +`<div style="display:flex;gap:8px;margin-top:9px">`
+      +`<button class="tbtn" onclick="cmpOpenSession('${a}')">開 ${a} 研究</button>`
+      +`<button class="tbtn" onclick="cmpOpenSession('${b}')">開 ${b} 研究</button></div>`;
+  }catch(e){el.textContent='對照失敗:'+(e&&e.message||e)}
+}
+function cmpOpenSession(code){
+  closeOv('cmpTwOv');
+  if(code==='2330'){sessionStorage.setItem('boot','tsmc')}
+  else{sessionStorage.setItem('boot','sess:tw'+code);sessionStorage.setItem('bootq',code+' 值得在這個價位買嗎?')}
+  location.reload();
 }
 /* falsifier 歷史回測列(計畫卡「失效與出場」)*/
 function fbtRow(){
