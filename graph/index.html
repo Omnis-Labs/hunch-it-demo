@@ -27,6 +27,12 @@
   3. /settle/backtest falsifier 歷史回測 — 計畫卡顯示「此規則歷史觸發 N 次,觸發後 60D 平均 X% vs 未觸發 Y%」
   4. 法說逐字稿(data/transcripts/<code>-<label>.txt 或 POST url)→ LLM 抽管理層 claims → mgmt 節點
      真值列 + 進 /research/ask 問答 context
+  v21f 任意美股 session(yfinance 真值):
+  1. 問「AAPL 值得買嗎?」或 heatmap/Cmd-K/boot 帶美股 ticker → registerUsSession:真報價/名稱、
+     季營收+YoY+毛利率(quarterly income stmt)、90D 真 K、財報日倒數節點;NVDA/ASML 仍走完整劇本
+  2. falsifier 錨點=「季營收 YoY 轉負或毛利 −5pp,財報日對答案」;⇪ 送 Thesis 自動建 us_revenue_yoy /
+     us_gross_margin checkpoints(due=財報日);問答 context 加 us_fundamentals 區塊
+  3. 限制:美股無籌碼面(FinLab 僅台股)、無歷史回測列(yfinance 只回 ~5 季)
   v21e 介面互通與即時化:
   1. ?boot=<代號> 直接開該股 session(React heatmap「🔬 開研究」/Cmd-K/Agent Inbox 掃描候選都經此進入);
      「⇪ 送進 Thesis Lab」成功後按鈕變「開拆彈 ↗」postMessage 讓 host 跳到 Thesis Lab 對應條目
@@ -997,7 +1003,13 @@ function parseQuery(q,force){
   if(!sess){
     // v21d 任意台股:query 帶 4 碼代號且非 2330 → 動態 tw session(需 backend;離線退回 tsmc demo)
     const m=q.match(/(?:^|\D)(\d{4})(?:\D|$)/);
-    sess=(API&&m&&m[1]!=='2330'&&!/tsmc|台積/i.test(q))?'tw'+m[1]:'tsmc';
+    if(API&&m&&m[1]!=='2330'&&!/tsmc|台積/i.test(q))sess='tw'+m[1];
+    else{
+      // v21f 任意美股:query 以 1-5 字母 ticker 開頭(排除常見縮寫與 TSMC 語境)
+      const um=q.trim().toUpperCase().match(/^([A-Z]{1,5})(?:\b|[^A-Z])/);
+      const STOP=new Set(['AI','GM','PE','EPS','YOY','ETF','IPO','CEO','GDP','CPI','FED','Q','K','KD','MACD','RSI','TSMC','TW']);
+      sess=(API&&um&&!STOP.has(um[1])&&!/tsmc|台積/i.test(q))?'us'+um[1]:'tsmc';
+    }
   }
   const maps={
    tsmc:[[/毛利|財報|營收|獲利/,'fin'],[/地緣|管制|中國/,'geo'],[/競爭|市占|對手/,'comp'],[/供應|封裝|cowos|產能/i,'capex'],[/技術面|線圖|k線/i,'tech'],[/治理|管理層/,'mgmt'],[/客戶/,'cust']],
@@ -1189,6 +1201,11 @@ function startSession(sess){
   else if(sess.startsWith('tw')){   // v21d 任意台股:先向 backend 註冊真值 session 再生長
     registerTwSession(sess.slice(2)).then(()=>startGrowth())
       .catch(()=>{SESSION='tsmc';toast('無法載入該台股資料 — 退回 TSMC demo');startGrowth()});
+    return;
+  }
+  else if(sess.startsWith('us')){   // v21f 任意美股(yfinance 真值)
+    registerUsSession(sess.slice(2)).then(()=>startGrowth())
+      .catch(()=>{SESSION='tsmc';toast('無法載入該美股資料 — 退回 TSMC demo');startGrowth()});
     return;
   }
   startGrowth();
@@ -1879,6 +1896,17 @@ function openPane(n){
     chat.innerHTML=chatStore[n.id];chat.dataset.dirty='1';
   } else if(n.root){
     chat.innerHTML=SESSION==='nvda'?CARD.nvdaRoot():(SESSION==='asml'?CARD.asml():(SESSION.startsWith('tw')&&CARD.twRoot?CARD.twRoot():CARD.root()));
+  } else if((SESSION.startsWith('tw')||SESSION.startsWith('us'))&&CARD[n.id]&&['fin','pv','tech','geo','val','ev','open'].includes(n.id)){
+    // v21f 通用 session:節點卡 = 該股真值卡 + 真資料建議問題(走 /research/ask),不再漏 TSMC 劇本
+    const SUGG={
+      fin:SESSION.startsWith('tw')?['這季毛利率為何變動?','月營收成長的動能是什麼?']:['最新一季營收與毛利率變化的原因?','下一季財報該關注什麼?'],
+      pv:['外資最近的買賣方向代表什麼?','借券餘額的變化該怎麼解讀?'],
+      tech:['目前價格在均線結構的什麼位置?'],
+      geo:['最近有哪些重大訊息或風險?'],
+      val:['目前估值相對過去合理嗎?'],
+      ev:['下次財報前該追蹤什麼?'],open:[]};
+    const chips=(SUGG[n.id]||[]).map(q=>`<button class="paneChip" onclick='genAsk(${JSON.stringify(q)})'>${q}</button>`).join(' ');
+    chat.innerHTML=CARD[n.id]()+(chips?`<div class="msg agent" style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>`:'')+`<div class="msg agent">${monChip(n)}</div>`;
   } else if(n.id==='nv-val'){
     chat.innerHTML=CARD['nv-val']()+`<div class="msg agent">${monChip(n)}</div>`;
   } else if(n.root2){
@@ -3563,6 +3591,7 @@ window.addEventListener('load',()=>{
     if(/^\d{4}$/.test(code)&&code!=='2330'){inp.value=code+' 值得在這個價位買嗎?';startSession('tw'+code);return}
     if(code==='NVDA'){inp.value='NVDA 的 CoWoS 依賴是不是風險?';startSession('nvda');return}
     if(code==='ASML'){inp.value='ASML High-NA 需求何時兌現?';startSession('asml');return}
+    if(/^[A-Z.\-]{1,6}$/.test(code)&&!['2330','TSMC'].includes(code)){inp.value=code+' 值得在這個價位買嗎?';startSession('us'+code);return}
     inp.value='TSMC 值不值得在這個價位加碼?';startGrowth();return;
   }
   const b=sessionStorage.getItem('boot');   // session 切換時的重載接力
@@ -3666,7 +3695,7 @@ async function tryLive(){
     if(o&&o.bars&&o.bars.length>5)LIVE_BARS[sess]=o.bars;
   }));
   liveNewsFetch();liveMonitorsFetch();
-  tryLiveTw();liveInboxFetch();livePosFetch();
+  tryLiveTw();tryLiveUs();liveInboxFetch();livePosFetch();
   setInterval(liveMonitorsFetch,30000);setInterval(liveInboxFetch,60000);   // 哨兵/收件匣即時化
   updatePlanDock();refreshPlanCard();
 }
@@ -3792,6 +3821,8 @@ fakeAsk=function(inp){
     chat.scrollTop=chat.scrollHeight})
   .catch(()=>{clearTimeout(stT);const w=document.getElementById(wid);if(w)w.textContent='(backend 查詢失敗 — 稍後再試)'});
 };
+/* 通用 session 的建議問題 chip → 直接送進真資料問答管線 */
+function genAsk(q){fakeAsk({value:q})}
 /* 出處 chip → 對應節點 */
 const BLOCK_NODE={fundamentals:'fin',chips:'pv',calendar:'fin',announcements:'geo',events:'pv',transcript:'mgmt'};
 function openBlockNode(b){
@@ -3835,31 +3866,49 @@ async function sendPlanOrders(btn){
 /* falsifier → 真 checkpoints:月營收(每月10日)+ 季毛利(季報期限)到期自動對答案進校準 */
 async function armLiveCheckpoints(tid){
   const sym=LIVE_SYM[SESSION]||'';
-  if(!sym.endsWith('.TW')||!LIVE_TW||!LIVE_TW.cal)return;
+  const isTW=sym.endsWith('.TW'), isUS=SESSION.startsWith('us')&&LIVE_USF&&LIVE_USF.next_earnings;
+  if(!(isTW&&LIVE_TW&&LIVE_TW.cal)&&!isUS)return;
   const code=sym.replace('.TW','');
   const flag='cpArmed.'+RES_ID;
   if(localStorage.getItem(flag))return;
   const conf=Math.min(.95,Math.max(.1,convCalc()/10));
-  const yoyThr=SESSION==='tsmc'?20:0;
-  const gm=LIVE_TW.f&&LIVE_TW.f.latest.gm;
-  const gmThr=gm!=null?Math.max(0,Math.floor(gm-5)):null;
   const mk=(m,op,thr,due,label)=>fetch(API+'/checkpoints',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({symbol:code,metric:m,op,threshold:thr,due,label,confidence:conf,session_key:RES_ID,thesis_id:tid||null})});
-  const jobs=[mk('monthly_revenue_yoy','>=',yoyThr,LIVE_TW.cal.next_monthly_revenue,`月營收 YoY ≥ +${yoyThr}%(營收動能假說)`)];
-  if(gmThr!=null)jobs.push(mk('gross_margin','>=',gmThr,LIVE_TW.cal.next_quarterly_deadline,`季毛利率 ≥ ${gmThr}%(獲利結構假說)`));
+  let jobs;
+  if(isTW){
+    const yoyThr=SESSION==='tsmc'?20:0;
+    const gm=LIVE_TW.f&&LIVE_TW.f.latest.gm;
+    const gmThr=gm!=null?Math.max(0,Math.floor(gm-5)):null;
+    jobs=[mk('monthly_revenue_yoy','>=',yoyThr,LIVE_TW.cal.next_monthly_revenue,`月營收 YoY ≥ +${yoyThr}%(營收動能假說)`)];
+    if(gmThr!=null)jobs.push(mk('gross_margin','>=',gmThr,LIVE_TW.cal.next_quarterly_deadline,`季毛利率 ≥ ${gmThr}%(獲利結構假說)`));
+  }else{
+    const l=LIVE_USF.latest, due=LIVE_USF.next_earnings;
+    jobs=[mk('us_revenue_yoy','>=',0,due,'季營收 YoY ≥ 0%(營收動能假說)')];
+    if(l.gm!=null)jobs.push(mk('us_gross_margin','>=',Math.max(0,Math.floor(l.gm-5)),due,`毛利率 ≥ ${Math.max(0,Math.floor(l.gm-5))}%(獲利結構假說)`));
+  }
   const rs=await Promise.allSettled(jobs);
   if(rs.some(x=>x.status==='fulfilled'&&x.value.ok)){
     localStorage.setItem(flag,'1');
-    toast(`⚑ 已建立真實 checkpoints:${LIVE_TW.cal.next_monthly_revenue} 月營收 / ${LIVE_TW.cal.next_quarterly_deadline} 季報 — 到期 agent 自動對答案進校準`);
+    toast(isTW
+      ?`⚑ 已建立真實 checkpoints:${LIVE_TW.cal.next_monthly_revenue} 月營收 / ${LIVE_TW.cal.next_quarterly_deadline} 季報 — 到期 agent 自動對答案進校準`
+      :`⚑ 已建立真實 checkpoints:${LIVE_USF.next_earnings} 財報日對答案(季營收 YoY / 毛利率)— 到期 agent 自動結算進校準`);
   }
 }
 /* ===== v21d 任意台股 session:代號 → 動態註冊真值 session(名稱/報價/假說集/錨點/骨架/卡片) ===== */
 async function registerTwSession(code){
   const sess='tw'+code, sym=code+'.TW';
-  const [lk,v]=await Promise.all([jget('/twdata/lookup?q='+code,25000),jget('/valuation?symbol='+encodeURIComponent(sym),25000)]);
+  // 冷啟動時 FinLab 公司表 / yfinance 可能要數十秒 — 拿不到也照樣建 session(名稱先用代號,
+  // 真值由 tryLiveTw 與卡片重開時事後補),絕不退回 TSMC demo
+  let lk=null,v=null;
+  try{[lk,v]=await Promise.all([jget('/twdata/lookup?q='+code,25000),jget('/valuation?symbol='+encodeURIComponent(sym),25000)])}catch(_){}
   const hit=lk&&lk.matches&&lk.matches[0];
-  if(!hit&&!(v&&v.price))throw new Error('unknown symbol');
   const name=(hit&&hit.name)||code, industry=(hit&&hit.industry)||'';
+  if(!hit)jget('/twdata/lookup?q='+code,60000).then(r=>{   // 慢回來的名字補進 root 節點
+    const h=r&&r.matches&&r.matches[0];
+    if(h&&h.name&&SESS_NAME[sess]===code){SESS_NAME[sess]=h.name;
+      const rd=document.querySelector('#n-root .label,#n-root b');
+      const rn=document.getElementById('n-root');
+      if(rn){const el=rn.querySelector('.nlabel')||rd;if(el)el.textContent=h.name}}});
   const price=v&&v.price?Math.round(v.price*10)/10:0;
   SESS_NAME[sess]=name; LIVE_SYM[sess]=sym; if(v&&v.price)LIVE_Q[sess]=v;
   H_SETS[sess]={
@@ -3894,6 +3943,79 @@ async function registerTwSession(code){
   paneData.fin={sub:'FinLab 真值 · 月頻'};paneData.pv={sub:'FinLab 籌碼 · 日頻'};paneData.tech={sub:'90D 日 K(真)'};
   paneData.geo={sub:'TWSE 重訊'};paneData.val={sub:'LIVE 報價'};paneData.open={sub:'待解'};paneData.root={sub:'真值總覽'};
   alog('已註冊台股 session:'+name+'('+sym+')— 真值骨架就緒');
+}
+/* ===== v21f 任意美股 session(yfinance 真值:季營收/毛利/財報日) ===== */
+let LIVE_USF=null;
+async function registerUsSession(tk){
+  const sess='us'+tk;
+  let v=null;
+  try{v=await jget('/valuation?symbol='+encodeURIComponent(tk),25000)}catch(_){}
+  const name=(v&&v.name)||tk;
+  const price=v&&v.price?Math.round(v.price*10)/10:0;
+  SESS_NAME[sess]=name; LIVE_SYM[sess]=tk; if(v&&v.price)LIVE_Q[sess]=v;
+  H_SETS[sess]={
+    H1:{l:'H1 營收動能持續(季 YoY 正成長)',wA:1.5,wR:-2,def:()=>'doubt'},
+    H2:{l:'H2 毛利率維持或改善',wA:1,wR:-1.5,def:()=>'doubt'},
+    H3:{l:'H3 競爭地位 / 護城河可維持',wA:1,wR:-1,def:()=>'doubt'},
+    H4:{l:'H4 總體與估值風險可控',wA:.5,wR:-1.5,def:()=>'doubt'}};
+  const P=price||100;
+  PLAN_ANCHORS[sess]={price:P,cur:'$',e1:Math.round(P*.95),e1l:'−5% 回檔帶',e2:Math.round(P*.88),e2l:'−12% 深回檔',
+    yr:Math.round(P*.8),hi:Math.round(P*1.15),
+    fals:'季營收 YoY 轉負(下次財報對答案)',next:'下次財報 · 日期載入中',
+    ev:['季營收 YoY(yfinance 真值)','財報日倒數'],
+    cons:['估值錨點為現價係數推導,非模型','美股無籌碼面資料(FinLab 僅台股)']};
+  NODES.length=0;NODES.push(
+    {id:'root',x:50,y:44,root:true,label:name,kpi:(price?('$'+price+' · '):'')+tk},
+    {id:'fin',x:27,y:22,label:'財務動能',src:2,spark:[10,11,12,12,13,14],kpi:'季營收 / 毛利率 <b>真值</b>'},
+    {id:'tech',x:73,y:22,label:'技術分析 · 短中長',src:1,badge:'TECH · 日 K',spark:[9,11,10,13,15,14],kpi:'90D 真 K 線'},
+    {id:'geo',x:17,y:56,label:'產業與風險',src:1,spark:[8,9,10,11,12,12],kpi:'題材 / 事件'},
+    {id:'ev',x:83,y:56,label:'財報倒數',src:1,spark:[6,8,10,12,14,15],kpi:'下次對答案 <b>真值</b>'},
+    {id:'open',x:67,y:80,dashed:true,label:'未決問題'},
+    {id:'val',x:50,y:13,model:true,label:'估值 · 概覽',kpi:v&&v.pe?('P/E <b>'+(Math.round(v.pe*10)/10)+'x</b>'):'—'});
+  EDGE_EXTRA.length=0;EDGE_EXTRA.push(
+    {from:'fin',to:'val',cls:'dep',label:'依賴:營收動能 → 估值'},
+    {from:'ev',to:'fin',cls:'dep',label:'依賴:財報日 → 假說對答案'});
+  jget('/marketdata/ohlcv?symbol='+encodeURIComponent(tk)+'&limit=36',25000).then(o=>{if(o&&o.bars&&o.bars.length>5)LIVE_BARS[sess]=o.bars});
+  CARD.twRoot=usRootCard; CARD.root=usRootCard;
+  CARD.fin=usFinCard;
+  CARD.tech=()=>GEN.tech.card(sess);
+  CARD.ev=()=>{const f=LIVE_USF;return `<div class="msg agent"><div class="card"><h4>財報倒數(真值)</h4><div class="arow"><b>${f&&f.next_earnings?('下次財報 '+f.next_earnings+'(D-'+Math.max(0,f.dday)+')'):'財報日載入中 — 關掉重開'}</b> — 屆時 agent 對 falsifier 自動對答案<div class="from">← yfinance calendar</div></div>${srcRow('yfinance')}</div></div>`};
+  CARD.val=()=>`<div class="msg agent"><div class="card"><h4>估值概覽(LIVE)</h4><div class="arow"><b>${price?('現價 $'+price+(v.pe?' · P/E '+Math.round(v.pe*10)/10+'x':'')+(v.eps?' · EPS '+v.eps:'')):'報價暫不可得'}</b><div class="from">← /valuation(yfinance)</div></div><div class="arow">計畫錨點:回檔帶 $${PLAN_ANCHORS[sess].e1} / 深回檔 $${PLAN_ANCHORS[sess].e2} / 年線近似 $${PLAN_ANCHORS[sess].yr}<div class="from">← 現價係數推導,非模型</div></div>${srcRow('LIVE 報價')}</div></div>`;
+  CARD.geo=()=>`<div class="msg agent"><div class="card"><h4>產業與風險</h4><div class="arow"><b>直接在下方輸入框問</b>(事件/風險 — 答案只用 yfinance 財報與事件庫真資料並標出處)<div class="from">← /research/ask</div></div>${srcRow('LIVE')}</div></div>`;
+  CARD.open=()=>`<div class="msg agent"><div class="card"><h4>未決問題</h4><div class="arow">研究裡還沒有答案的問題丟這裡</div>${srcRow('研究流程')}</div></div>`;
+  paneData.fin={sub:'yfinance 季報'};paneData.tech={sub:'90D 日 K(真)'};paneData.geo={sub:'事件庫'};
+  paneData.ev={sub:'財報日'};paneData.val={sub:'LIVE 報價'};paneData.open={sub:'待解'};paneData.root={sub:'真值總覽'};
+  alog('已註冊美股 session:'+name+'('+tk+')— yfinance 真值骨架就緒');
+}
+function usRootCard(){
+  const f=LIVE_USF,l=f&&f.latest;
+  return `<div class="msg agent"><div class="card"><h4>${SESS_NAME[SESSION]}(${LIVE_SYM[SESSION]})· 真值總覽</h4>
+    ${l?`<div class="arow"><b>季營收 $${l.rev_b}B${l.yoy!=null?`(YoY ${l.yoy>0?'+':''}${l.yoy}%)`:''}</b>${l.gm!=null?` · 毛利率 ${l.gm}%`:''}<div class="from">← yfinance 季報</div></div>`:'<div class="arow">季報載入中 — 稍候重開此卡</div>'}
+    ${f&&f.next_earnings?`<div class="arow">下次對答案:財報 ${f.next_earnings}(D-${Math.max(0,f.dday)})<div class="from">← yfinance calendar</div></div>`:''}
+    <div style="font-size:10.5px;color:var(--dim);margin-top:6px">↳ 到交易計畫卡對四條假說表態 → 生成你的計畫;節點輸入框是真資料問答</div>
+    ${srcRow('LIVE · yfinance')}</div></div>`;
+}
+function usFinCard(){
+  const f=LIVE_USF;
+  if(!f)return `<div class="msg agent"><div class="card"><h4>財務動能</h4><div class="arow">季報載入中 — 關掉重開此卡</div></div></div>`;
+  const rows=f.quarters.map(q=>`<tr><td>${q.q}</td><td>$${q.rev_b}B</td><td>${q.yoy==null?'—':`<span class="${q.yoy>=0?'up':'down'}">${q.yoy>0?'+':''}${q.yoy}%</span>`}</td><td>${q.gm==null?'—':q.gm+'%'}</td></tr>`).join('');
+  return `<div class="msg agent"><div class="card"><h4>季營收與毛利率(yfinance 真值)</h4><table class="scTable"><tr><th>季</th><th>營收</th><th>YoY</th><th>GM</th></tr>${rows}</table><div style="font-size:10px;color:var(--faint);margin-top:5px">YoY 需 4 季前基期 — yfinance 只回 ~5 季,較舊季別無 YoY</div></div>${srcRow('yfinance quarterly income statement')}</div>`;
+}
+async function tryLiveUs(){
+  if(!SESSION.startsWith('us'))return;
+  const tk=LIVE_SYM[SESSION]||'';
+  const f=await jget('/usdata/fundamentals?symbol='+encodeURIComponent(tk),35000);
+  if(!f)return;
+  LIVE_USF=f;
+  const l=f.latest;
+  twLine(document.getElementById('n-fin'),`● 真值 季營收 $${l.rev_b}B${l.yoy!=null?' YoY '+(l.yoy>0?'+':'')+l.yoy+'%':''}${l.gm!=null?' · GM '+l.gm+'%':''}`);
+  if(f.next_earnings){
+    twLine(document.getElementById('n-ev'),`● ${f.next_earnings} · D-${Math.max(0,f.dday)}`,'var(--act)');
+    const A=PLAN_ANCHORS[SESSION];
+    if(A){A.fals=`季營收 YoY 轉負${l.gm!=null?`,或毛利率 < ${Math.max(0,Math.floor(l.gm-5))}%`:''}(財報 ${f.next_earnings} 對答案)`;A.next=`下次財報 · D-${Math.max(0,f.dday)}`}
+  }
+  alog(`LIVE·US 真值:季營收 $${l.rev_b}B${l.yoy!=null?'(YoY '+(l.yoy>0?'+':'')+l.yoy+'%)':''}${l.gm!=null?' · GM '+l.gm+'%':''}${f.next_earnings?' · 財報 D-'+Math.max(0,f.dday):''}`);
+  updatePlanDock();
 }
 function twRootCard(){
   const f=LIVE_TW&&LIVE_TW.f,c=LIVE_TW&&LIVE_TW.c,cal=LIVE_TW&&LIVE_TW.cal;
