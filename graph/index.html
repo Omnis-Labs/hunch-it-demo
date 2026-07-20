@@ -15,6 +15,13 @@
   2. 底部 dock 整理 — 價格疊圖固定停靠在時間軸上方、hint 隨 dock 高度上移、倉位列改到頂部置中(估值節點下移讓位)
   3. hint 文案精簡為單行;影子節點移位不再撞 zoom 按鈕
   4. Esc / 點背景可關閉 modal、overlay、內部視圖;畫布加點陣底紋(隨縮放縮放,強化空間感)
+  v20.1 計畫與主線不只 TSMC:
+  1. H_SETS/PLAN_ANCHORS per session — NVDA/ASML 各有假說集(AI 需求/CoWoS 上限/ASIC 侵蝕…、High-NA/backlog…)
+     與價位錨點;觀點機制(表態+風險偏好→方向/信念/進場框架)三個 session 通用
+  2. 通用計畫卡 planPaneLite + 假說 DAG buildPlanInternalLite(證據→H1–H4 可表態→約束→決策);
+     genPlan/planDock/KPI 去 TSMC 限定(骨架 session 表態即可生成,無倉位顯示首倉規劃)
+  3. JOURNEY_LITE 六步主線(掃描→深挖核心→補分析→表態→生成計畫→掛哨兵),JLIST() 依 session 切換;
+     閒置建議/存檔進度/INBOX 卡進度全部跟上;骨架 finale hint 改指主線
   v20 從 demo 到工具:
   1. 觀點機制:假說 DAG 每條 H1–H4 可「接受/存疑/拒絕」表態(預設由研究行為推導),計畫卡選風險偏好(保守/中性/積極);
      方向(加碼/持有觀望/減碼迴避)、信念(公式攤開)、進場框架(三種變體 × 風險調整)全部由表態推導 —
@@ -1189,7 +1196,7 @@ function growthFinale(){
     updateJourney();
     armIdle();
     if(coreD)coreD.classList.add('pulse');
-    hint((SESSION==='nvda'?'NVDA':'ASML')+' graph 繞著你的問題長好了 — 核心是 <b>⌖ 「'+(coreN?coreN.label:'')+'」</b>。<b>右鍵畫布</b>(或 ✚)可加更多分析節點');
+    hint(SESS_NAME[SESSION]+' graph 繞著你的問題長好了 — 核心是 <b>⌖ 「'+(coreN?coreN.label:'')+'」</b>。跟著<b>頂部主線</b>走到你的交易計畫');
     return;
   }
   armIdle();
@@ -1799,6 +1806,7 @@ function openPane(n){
   saveChat();
   unfocusDom();
   paneNodeId=n.id;focusNode=n;
+  if(n.id===CORE_ID)coreVisited=true;   // 骨架主線「深挖核心」判定
   const d=document.getElementById('n-'+n.id);
   d.classList.remove('pulse');
   d.classList.add('focus');
@@ -1974,6 +1982,7 @@ function enterInternalFor(n,viaZoom){
    每顆節點狀態隨研究進度活著;點節點 → 🔍 依據明細。這是 agent 推理的 audit 視圖。 */
 function buildPlanInternal(){
   document.getElementById('crumbGname').textContent='交易計畫(假說推論)';
+  if(SESSION!=='tsmc'){buildPlanInternalLite();return}
   const bears=document.querySelectorAll('#bearList .titem').length;
   const opens=document.querySelectorAll('#openList .titem:not(.resolved)').length;
   const conv=Math.max(3,7-bears-(opens?1:0));
@@ -2031,6 +2040,38 @@ function buildGenericInternal(n){
   pzG.reset();
   document.getElementById('internalG').style.display='block';
   hint('「'+n.label+'」的 reasoning DAG — 葉子證據都可挑戰(完整挑戰劇情在 CapEx 節點)');
+}
+/* 非 TSMC 的假說 DAG:證據 → H1–H4(可表態)→ 約束 → 決策,同一套文法 */
+function buildPlanInternalLite(){
+  const A=PLAN_ANCHORS[SESSION], HS=hSet(), keys=Object.keys(HS);
+  const stC=h=>{const s=stanceOf(h);return s==='accept'?'var(--bull)':(s==='reject'?'var(--bear)':'var(--dim)')};
+  const hy=[16,38,60,81];
+  const N=[
+   {x:17,y:32,k:'EVIDENCE',t:A.ev[0]},
+   {x:17,y:64,k:'EVIDENCE',t:A.ev[1]},
+   ...keys.map((h,i)=>({x:44,y:hy[i],k:h+(HS[h].wA>0?' · BULL':' · BEAR'),t:HS[h].l,c:HS[h].wA>0?'var(--bull)':'var(--bear)',st:h})),
+   {x:67,y:30,k:'約束',t:A.cons[0],c:'var(--amber)'},
+   {x:67,y:64,k:'約束',t:A.cons[1],c:'var(--amber)'},
+   {x:87,y:48,k:'DECISION',t:`${planDirection()} · 信念 ${convCalc()}/10<br><span style="font-family:var(--mono);font-size:10px;color:var(--dim)">由你的表態推導 · 風險偏好 ${PROFILE.risk}</span>`,c:'var(--act)',big:1}
+  ];
+  document.getElementById('dagBoxG').innerHTML=N.map(n=>
+    `<div class="dnode" style="left:${n.x}%;top:${n.y}%;${n.c?`border-color:${n.c};`:''}${n.big?'max-width:216px;':''}"><span class="k">${n.k}</span>${n.t}${n.st?stBtns(n.st):''}</div>`).join('');
+  const svg=document.getElementById('dagSvgG');svg.innerHTML='';
+  const W=innerWidth,H=innerHeight;
+  const seg=(a,b,c,d2,col,dash)=>{
+    const x1=a/100*W,y1=b/100*H,x2=c/100*W,y2=d2/100*H;
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',`M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`);
+    p.setAttribute('class','dedge');
+    if(col)p.setAttribute('style',`stroke:${col}${dash?';stroke-dasharray:4 4':''}`);
+    svg.appendChild(p);
+  };
+  seg(17,32,44,16);seg(17,32,44,38);seg(17,64,44,60);seg(17,64,44,81);
+  keys.forEach((h,i)=>seg(44,hy[i],87,48,HS[h].wA>0?'rgba(63,191,138,.5)':'rgba(224,104,122,.5)',HS[h].wA<0));
+  seg(67,30,87,48,'rgba(232,180,79,.5)',1);seg(67,64,87,48,'rgba(232,180,79,.5)',1);
+  pzG.reset();
+  document.getElementById('internalG').style.display='block';
+  hint('對每條假說<b>表態</b>(接受/存疑/拒絕)— 決策節點即時重算,這是你的計畫');
 }
 function exitInternalG(){document.getElementById('internalG').style.display='none'}
 /* 內部圖的拖曳/縮放(與主畫布同手感);點擊(drill/挑戰/promote)不受影響 */
@@ -2622,12 +2663,12 @@ function fillMgmt(){
 /* ================= v8:交易計畫(產出物節點) ================= */
 let falsText='若 Q3 毛利率 < 52%,此論點作廢';
 function genPlan(silent){
-  if(!bullPinned){if(!silent)toast('先釘至少一條論點,交易計畫才有依據');return}
+  if(SESSION==='tsmc'&&!bullPinned){if(!silent)toast('先釘至少一條論點,交易計畫才有依據');return}
   exploreMark('plan');
   let n=NODES.find(x=>x.id==='plan');
   if(!n){
     const t=NODES.find(x=>x.id==='thesis'), p=posFor('plan',findFreeSpot(t?t.x:13,(t?t.y:13)+18));
-    n={id:'plan',x:p.x,y:p.y,plan:true,parent:'thesis',label:'交易計畫'};
+    n={id:'plan',x:p.x,y:p.y,plan:true,parent:t?'thesis':'root',label:'交易計畫'};
     NODES.push(n);
     const d=makeNode(n);
     drawEdges();document.querySelectorAll('.edge').forEach(e=>e.classList.add('drawn'));
@@ -2646,23 +2687,49 @@ function genPlan(silent){
 }
 /* ================= v20:觀點機制 — 你的表態決定計畫 =================
    同一題,不同 user 的接受/拒絕/風險偏好 → 不同方向、信念、進場框架。 */
-let STANCE={};                       // {H1:'accept'|'doubt'|'reject',...}
+let STANCE={};                       // {H1:'accept'|'doubt'|'reject',...} per session 存檔
 const PROFILE={risk:'中性'};
-const H_LABEL={H1:'毛利下滑=暫時性(bull)',H2:'CapEx 見頂 2028(fact)',H3:'先進封裝=瓶頸(bear)',H4:'爬坡拖延(bear)'};
+/* 假說集與計畫錨點 per session — 交易計畫與觀點機制不只 TSMC */
+const H_SETS={
+ tsmc:{
+  H1:{l:'毛利下滑=暫時性(bull)', wA:2,wR:-2, def:()=>bullPinned?'accept':'doubt'},
+  H2:{l:'CapEx 見頂 2028(fact)', wA:1,wR:0,  def:()=>promoted?'accept':'doubt'},
+  H3:{l:'先進封裝=瓶頸(bear)',   wA:-2,wR:1, def:()=>advPinned?'accept':'doubt'},
+  H4:{l:'爬坡拖延(bear)',        wA:-1,wR:0, def:()=>'doubt'}},
+ nvda:{
+  H1:{l:"AI 需求>供給撐到 '27(bull)", wA:2,wR:-2, def:()=>'accept'},
+  H2:{l:'CoWoS 配額=出貨上限(fact)',  wA:1,wR:0,  def:()=>'accept'},
+  H3:{l:'custom ASIC 侵蝕加速(bear)', wA:-2,wR:1, def:()=>'doubt'},
+  H4:{l:'出口管制升級(bear)',          wA:-1,wR:0, def:()=>'doubt'}},
+ asml:{
+  H1:{l:'High-NA 只是延後非取消(bull)', wA:2,wR:-2, def:()=>'accept'},
+  H2:{l:'backlog €39B 能見度(fact)',   wA:1,wR:0,  def:()=>'accept'},
+  H3:{l:'High-NA 交期再延(bear)',       wA:-2,wR:1, def:()=>'doubt'},
+  H4:{l:'中國管制升級(bear)',           wA:-1,wR:0, def:()=>'doubt'}}
+};
+const PLAN_ANCHORS={
+ tsmc:{price:1118,cur:'$'},
+ nvda:{price:168,cur:'$',e1:158,e1l:'MA20 支撐',e2:148,e2l:'前平台上緣',yr:128,hi:196,
+   fals:'資料中心營收 QoQ 轉負,或 CoWoS 配額遭下修 >10%',next:'下一季財報 · D-24',
+   ev:['CoWoS 供需模型','CSP capex 指引'],cons:['單一供應鏈:先進製程 100% TSMC','估值 PEG 0.9 依賴出貨上限持續上修']},
+ asml:{price:912,cur:'$',e1:870,e1l:'頸線回測',e2:830,e2l:'FV 下緣',yr:780,hi:990,
+   fals:'backlog 連兩季下滑,或 High-NA 再延 ≥1 季',next:'下一季財報 · D-9',
+   ev:['出貨/交期追蹤','backlog 轉換模型'],cons:['客戶集中:前三大 82%','估值溢價依賴 backlog 能見度']}
+};
+function hSet(){return H_SETS[SESSION]||H_SETS.tsmc}
+function hLabel(h){return (hSet()[h]||{}).l||h}
 function stanceOf(h){
   if(STANCE[h])return STANCE[h];
-  // 預設由研究行為推導 — 走過的路不同,預設觀點就不同
-  if(h==='H1')return bullPinned?'accept':'doubt';
-  if(h==='H2')return promoted?'accept':'doubt';
-  if(h==='H3')return advPinned?'accept':'doubt';
-  return 'doubt';
+  const d=(hSet()[h]||{}).def;
+  return d?d():'doubt';   // 預設由研究行為/該 session 資料推導
 }
 function convCalc(){
   let c=5;
-  c+=stanceOf('H1')==='accept'?2:(stanceOf('H1')==='reject'?-2:0);
-  c+=stanceOf('H2')==='accept'?1:0;
-  c+=stanceOf('H3')==='accept'?-2:(stanceOf('H3')==='reject'?1:0);
-  c+=stanceOf('H4')==='accept'?-1:0;
+  const HS=hSet();
+  for(const h of Object.keys(HS)){
+    const s=stanceOf(h);
+    c+=s==='accept'?HS[h].wA:(s==='reject'?HS[h].wR:0);
+  }
   c+=PROFILE.risk==='積極'?1:(PROFILE.risk==='保守'?-1:0);
   c-=1;   // 校準折減(半導體 bull 過度自信)
   return Math.max(1,Math.min(9,c));
@@ -2671,7 +2738,7 @@ function planDirection(){const c=convCalc();return c>=6?'加碼(受限)':(c>=4?'
 function setStance(h,v,ev){
   if(ev)ev.stopPropagation();
   STANCE[h]=v;
-  toast(`觀點更新:${H_LABEL[h]} → ${v==='accept'?'接受':(v==='reject'?'拒絕':'存疑')} — 信念 ${convCalc()}/10 · ${planDirection()}`);
+  toast(`觀點更新:${hLabel(h)} → ${v==='accept'?'接受':(v==='reject'?'拒絕':'存疑')} — 信念 ${convCalc()}/10 · ${planDirection()}`);
   if(document.getElementById('internalG').style.display==='block')buildPlanInternal();
   updatePlanKpi();refreshPlanCard();
 }
@@ -2697,28 +2764,30 @@ function stBtns(h){
 function updatePlanDock(){
   const dk=document.getElementById('planDock');
   if(!dk)return;
-  if(step<1||SESSION!=='tsmc'){dk.style.display='none';return}
+  if(step<1){dk.style.display='none';return}
   const wasHidden=dk.style.display!=='block';
   dk.style.display='block';
   if(wasHidden&&!focusNode)fitView(true);   // dock 出現 → 畫布左側讓位(focus 中不搶鏡頭)
   const exists=!!document.getElementById('n-plan');
   const st=document.getElementById('pdState'), b=document.getElementById('pdBody');
   if(!exists){
-    st.textContent=bullPinned?'可生成':'待論點';
+    const ready=SESSION!=='tsmc'||bullPinned;
+    st.textContent=ready?'可生成':'待論點';
     b.innerHTML=`<div>研究的終點是一份可執行的計畫。</div>
-      <div class="pdRow"><span>前置</span><span class="v">${bullPinned?'✓ 已有論點':'先釘 1 條論點'}</span></div>
+      <div class="pdRow"><span>前置</span><span class="v">${SESSION==='tsmc'?(bullPinned?'✓ 已有論點':'先釘 1 條論點'):'✓ 對假說表態即可'}</span></div>
       <button class="pdBtn" onclick="genPlan()">⇪ 生成交易計畫</button>`;
   }else{
     const conv=convCalc(),dir=planDirection();
     const dc=conv>=6?'var(--bull)':(conv>=4?'var(--amber)':'var(--bear)');
-    st.textContent=FACTS.settled?'✓ 已對答案':(valUpdated?'live · 連動中':'v1');
+    const A=PLAN_ANCHORS[SESSION];
+    st.textContent=SESSION==='tsmc'?(FACTS.settled?'✓ 已對答案':(valUpdated?'live · 連動中':'v1')):SESS_NAME[SESSION];
     b.innerHTML=
       `<div class="pdRow"><span>方向</span><span class="v" style="color:${dc}">${dir}</span></div>
        <div class="pdRow"><span>信念 · ${PROFILE.risk}</span><span class="v">${conv}/10</span></div>
-       <div class="pdRow"><span>進場帶</span><span class="v">$1,060 / 1,020</span></div>
-       <div class="pdRow"><span>失效</span><span class="v">GM<52% · $980</span></div>
-       <div class="pdRow"><span>曝險</span><span class="v" style="color:var(--bear)">38% ⚠ 30</span></div>
-       ${FACTS.settled?'<div class="pdRow"><span>結算</span><span class="v" style="color:var(--bull)">GM 53.8% ✓</span></div>':''}
+       <div class="pdRow"><span>進場帶</span><span class="v">${SESSION==='tsmc'?'$1,060 / 1,020':'$'+A.e1+' / '+A.e2}</span></div>
+       <div class="pdRow"><span>失效</span><span class="v">${SESSION==='tsmc'?'GM<52% · $980':'年線 $'+A.yr}</span></div>
+       ${SESSION==='tsmc'?'<div class="pdRow"><span>曝險</span><span class="v" style="color:var(--bear)">38% ⚠ 30</span></div>':''}
+       ${SESSION==='tsmc'&&FACTS.settled?'<div class="pdRow"><span>結算</span><span class="v" style="color:var(--bull)">GM 53.8% ✓</span></div>':''}
        <button class="pdBtn" onclick="openPlanFromDock()">開啟完整計畫</button>`;
   }
 }
@@ -2739,7 +2808,61 @@ function updatePlanKpi(){
   const dir=planDirection(),c=convCalc();
   k.innerHTML=(FACTS.settled?'<span class="up">✓ 已對答案</span> · ':'')+`${dir} · 信念 <b>${c}/10</b>`;
 }
+/* 非 TSMC session 的通用計畫卡:錨點/假說/失效 per session,觀點機制同一套 */
+function planPaneLite(){
+  const A=PLAN_ANCHORS[SESSION];
+  const conv=convCalc(), dir=planDirection();
+  const dirColor=conv>=6?'var(--bull)':(conv>=4?'var(--amber)':'var(--bear)');
+  const rr=((A.hi-A.e1)/(A.e1-A.yr)).toFixed(1);
+  let entryRows;
+  if(conv>=6){
+    entryRows=`
+      <tr><td>$${A.price}(現價)</td><td>${PROFILE.risk==='積極'?'<span class="up">小額啟動(積極)</span>':'觀望回檔'}</td><td>${PROFILE.risk==='積極'?'20%':'—'}</td></tr>
+      ${PROFILE.risk==='保守'?'':`<tr><td class="diff">$${A.e1}(${A.e1l})</td><td>第一批限價</td><td>${PROFILE.risk==='積極'?'30%':'40%'}</td></tr>`}
+      <tr><td class="diff">$${A.e2}(${A.e2l})</td><td>${PROFILE.risk==='保守'?'第一批限價(保守)':'第二批限價'}</td><td>${PROFILE.risk==='保守'?'30%':'40%'}</td></tr>
+      ${PROFILE.risk==='保守'?`<tr><td>$${A.yr}(年線)</td><td>第二批 · 極端回檔帶</td><td>30%</td></tr>`:''}
+      <tr><td>保留</td><td>${A.next.split(' ·')[0]}後再定</td><td>${PROFILE.risk==='保守'?'40%':'20%'}</td></tr>`;
+  }else if(conv>=4){
+    entryRows=`
+      <tr><td>$${A.price}(現價)</td><td><span class="down">不進場 — 觀點分歧,等財報對答案</span></td><td>—</td></tr>
+      <tr><td class="diff">$${A.e2}(${A.e2l})</td><td>觀察單(僅此一批)</td><td>20%</td></tr>
+      <tr><td>保留</td><td>假說驗證後再重評</td><td>80%</td></tr>`;
+  }else{
+    entryRows=`
+      <tr><td>$${A.price}(現價)</td><td><span class="down">不建倉 / 減碼既有 — 你拒絕了核心 bull 假說</span></td><td>—</td></tr>
+      <tr><td class="diff">$${A.hi}(上緣)</td><td>反彈出清 / 反向觀察</td><td>—</td></tr>
+      <tr><td>反向 falsifier</td><td>核心 bear 假說被證偽 → 認錯重評</td><td>—</td></tr>`;
+  }
+  return `<div class="msg agent">
+  <div class="statRow">
+    <div class="stat"><div class="n" style="color:${dirColor}">${dir.split(' ')[0].replace('(受限)','')}</div><div class="l">方向 · 由你的觀點推導</div></div>
+    <div class="stat"><div class="n">${conv}/10</div><div class="l">信念 · 表態+風險+校準</div></div>
+    <div class="stat"><div class="n">${rr}</div><div class="l">R/R @ 回檔帶</div></div>
+  </div>
+  <div class="card"><h4>你的觀點(改這裡,計畫跟著變)</h4>
+    <div style="display:flex;gap:5px;align-items:center;margin-bottom:8px"><span style="font-size:11px;color:var(--dim)">風險偏好</span>${['保守','中性','積極'].map(r=>`<span class="stB${PROFILE.risk===r?' on':''}" onclick="setRisk('${r}')">${r}</span>`).join('')}</div>
+    ${Object.keys(hSet()).map(h=>`<div class="pdRow"><span style="font-size:11px;color:var(--dim)">${hLabel(h)}</span><span style="font-size:10.5px;font-family:var(--mono);color:${stanceOf(h)==='accept'?'var(--bull)':(stanceOf(h)==='reject'?'var(--bear)':'var(--dim)')}">${stanceOf(h)==='accept'?'接受':(stanceOf(h)==='reject'?'拒絕':'存疑')}</span></div>`).join('')}
+    <button class="tbtn" style="margin-top:7px" onclick="deepFromCard()">⤢ 到假說 DAG 逐條表態</button>
+  </div>
+  <div class="card"><h4>進場框架 · ${dir}</h4>
+    <table class="scTable"><tr><th>價位</th><th>動作</th><th>倉位</th></tr>${entryRows}</table>
+    <div class="from" style="font-size:10px;color:var(--faint);margin-top:5px">← ${SESS_NAME[SESSION]} 錨點:${A.e1l} $${A.e1} / ${A.e2l} $${A.e2} / 年線 $${A.yr}</div>
+  </div>
+  <div class="card"><h4>失效與出場</h4>
+    <div class="arow"><b>✂ ${A.fals}</b> → 出場並重評<div class="from">← 此 session 的 falsifier · 對答案:${A.next.split(' ·')[0]}</div></div>
+    <div class="arow"><b>收盤 < $${A.yr}</b>(年線)→ 減半<div class="from">← 技術風控</div></div>
+    <div class="arow"><b>$${A.hi}(上緣)</b>→ 分批獲利 1/3</div>
+  </div>
+  <div class="card"><h4>部位 · 時程</h4>
+    <div class="arow"><b>無既有倉位</b> — 首倉上限 NAV 5%(骨架 session 未接倉位 overlay)<div class="from">← 風控預設</div></div>
+    <div class="arow"><b>${A.next}</b>:財報對答案後 agent 重算本計畫<div class="from">← 事件時點</div></div>
+    <div class="arow"><b>節點監控 ${monitored.size} 個</b>${monitored.size?'<button class="tbtn" style="margin-left:6px" onclick="openMonList()">查看清單</button>':'(在節點卡內「⚑ 掛監控」)'}<div class="from">← 節點觸發器</div></div>
+  </div>
+  <div class="srcRow">本計畫由你的觀點 × ${SESS_NAME[SESSION]} 錨點即時組裝 · 示意數字非即時行情</div>
+  </div>`;
+}
 function planPaneHTML(){
+  if(SESSION!=='tsmc')return planPaneLite();
   const bears=document.querySelectorAll('#bearList .titem').length;
   const opens=document.querySelectorAll('#openList .titem:not(.resolved)').length;
   const lo=FACTS.fv.lo, hi=FACTS.fv.hi, mid=Math.round((lo+hi)/2);
@@ -2776,7 +2899,7 @@ function planPaneHTML(){
   </div>
   <div class="card"><h4>你的觀點(改這裡,計畫跟著變)</h4>
     <div style="display:flex;gap:5px;align-items:center;margin-bottom:8px"><span style="font-size:11px;color:var(--dim)">風險偏好</span>${['保守','中性','積極'].map(r=>`<span class="stB${PROFILE.risk===r?' on':''}" onclick="setRisk('${r}')">${r}</span>`).join('')}</div>
-    ${['H1','H2','H3','H4'].map(h=>`<div class="pdRow"><span style="font-size:11px;color:var(--dim)">${H_LABEL[h]}</span><span style="font-size:10.5px;font-family:var(--mono);color:${stanceOf(h)==='accept'?'var(--bull)':(stanceOf(h)==='reject'?'var(--bear)':'var(--dim)')}">${stanceOf(h)==='accept'?'接受':(stanceOf(h)==='reject'?'拒絕':'存疑')}</span></div>`).join('')}
+    ${Object.keys(hSet()).map(h=>`<div class="pdRow"><span style="font-size:11px;color:var(--dim)">${hLabel(h)}</span><span style="font-size:10.5px;font-family:var(--mono);color:${stanceOf(h)==='accept'?'var(--bull)':(stanceOf(h)==='reject'?'var(--bear)':'var(--dim)')}">${stanceOf(h)==='accept'?'接受':(stanceOf(h)==='reject'?'拒絕':'存疑')}</span></div>`).join('')}
     <button class="tbtn" style="margin-top:7px" onclick="deepFromCard()">⤢ 到假說 DAG 逐條表態</button>
     <div class="from" style="font-size:10px;color:var(--faint);margin-top:5px">同一題,不同人的表態 → 不同方向與進場框架 — 這是你的計畫,不是 agent 的</div>
   </div>
@@ -2952,30 +3075,44 @@ const JOURNEY=[
  {k:'plan',  l:'生成交易計畫',d:'論點 × 估值 × 倉位 → 可執行的進出場計畫', done:()=>!!document.getElementById('n-plan'), go:()=>genPlan()},
  {k:'settle',l:'對答案覆盤', d:'模擬回訪:法說會結算 falsifier、校準更新', done:()=>FACTS.settled, go:()=>showResume()}
 ];
+/* 骨架 session(NVDA/ASML)的通用主線:同樣一路走到你的交易計畫 */
+let coreVisited=false;
+const JOURNEY_LITE=[
+ {k:'scan',  l:'掃描全貌',   d:'看骨架與各節點 KPI;⌖ 是你的問題核心', done:()=>step>=1, go:()=>{closePane();fitView(true,true)}},
+ {k:'core',  l:'深挖核心',   d:'打開 ⌖ 核心節點,看數據卡與下鑽明細', done:()=>coreVisited, go:()=>{const n=NODES.find(x=>x.id===CORE_ID);if(n)openPane(n)}},
+ {k:'expand',l:'補分析',     d:'右鍵畫布加財務/技術/價量等分析節點', done:()=>NODES.some(n=>n.tplK), go:()=>openCtxMenu(innerWidth/2,innerHeight/2)},
+ {k:'stance',l:'表態觀點',   d:'對假說接受/存疑/拒絕 + 選風險偏好', done:()=>Object.keys(STANCE).length>0, go:()=>{genPlan(true);const n=NODES.find(x=>x.id==='plan');if(n){closePane();buildPlanInternalLite()}}},
+ {k:'plan',  l:'生成交易計畫',d:'觀點 × 錨點 → 你的進出場框架', done:()=>!!document.getElementById('n-plan'), go:()=>genPlan()},
+ {k:'watch', l:'掛哨兵',     d:'給核心風險掛監控,觸發即重審', done:()=>monitored.size>0, go:()=>{const n=NODES.find(x=>x.id===CORE_ID);if(n)openPane(n);hint('在卡片裡按<b>⚑ 掛監控</b>')}}
+];
+function JLIST(){return SESSION==='tsmc'?JOURNEY:JOURNEY_LITE}
 function updateJourney(){
   const j=document.getElementById('journey');
-  if(step<1||SESSION!=='tsmc'){j.style.display='none';return}
+  if(step<1){j.style.display='none';return}
+  const J=JLIST();
   j.style.display='flex';
   let cur=-1;
-  document.getElementById('jDots').innerHTML=JOURNEY.map((s,i)=>{
+  document.getElementById('jDots').innerHTML=J.map((s,i)=>{
     const dn=s.done();
     if(!dn&&cur<0)cur=i;
     return `<span class="jdot${dn?' done':''}" data-l="${i+1}. ${s.l}" onclick="journeyStep(${i})"></span>`;
   }).join('');
   if(cur>=0){const ds=document.querySelectorAll('.jdot');if(ds[cur])ds[cur].classList.add('cur')}
-  const doneN=JOURNEY.filter(s=>s.done()).length;
-  document.getElementById('jCount').textContent='研究進度 '+doneN+'/'+JOURNEY.length;
+  const doneN=J.filter(s=>s.done()).length;
+  document.getElementById('jCount').textContent='研究進度 '+doneN+'/'+J.length;
   const t=document.getElementById('jText'), g=document.getElementById('jGo');
   if(cur<0){
-    t.innerHTML='<b>研究閉環完成 🎉</b> — 計畫已對答案,可回放/匯出/開 portfolio 層';
+    t.innerHTML=SESSION==='tsmc'
+      ?'<b>研究閉環完成 🎉</b> — 計畫已對答案,可回放/匯出/開 portfolio 層'
+      :'<b>主線完成 🎉</b> — 計畫已生成、哨兵在崗;可回首頁開下一個研究';
     g.textContent='打開交易計畫';g.onclick=()=>genPlan();
   }else{
-    t.innerHTML=`<b>${cur+1}/${JOURNEY.length} ${JOURNEY[cur].l}</b> — ${JOURNEY[cur].d}`;
+    t.innerHTML=`<b>${cur+1}/${J.length} ${J[cur].l}</b> — ${J[cur].d}`;
     g.textContent='下一步 →';g.onclick=journeyGo;
   }
 }
-function journeyGo(){const cur=JOURNEY.find(s=>!s.done());(cur||JOURNEY[6]).go()}
-function journeyStep(i){JOURNEY[i].go()}
+function journeyGo(){const J=JLIST();const cur=J.find(s=>!s.done());(cur||J[J.length-2]).go()}
+function journeyStep(i){JLIST()[i].go()}
 function toggleJourney(){
   const j=document.getElementById('journey');
   j.classList.toggle('min');
@@ -3132,12 +3269,15 @@ function maybeSuggest(){
   if(focusNode||document.getElementById('internal').style.display==='block'||document.getElementById('internalG').style.display==='block'){armIdle();return}
   if([...document.querySelectorAll('.ov')].some(o=>o.style.display==='flex')||document.getElementById('overlay').style.display==='flex'||document.getElementById('home').style.display==='block'){armIdle();return}
   let key,text,fn;
-  if(SESSION==='tsmc'){
-    const cur=JOURNEY.find(s=>!s.done());
-    if(!cur){key='done';text='研究閉環已完成 — 要我開 portfolio 層看跨公司結構嗎?';fn=()=>portView()}
-    else{key=cur.k;text='看你停了一下 — 下一步是「'+cur.l+'」,要我直接帶你去嗎?';fn=cur.go}
+  const cur=JLIST().find(s=>!s.done());
+  if(!cur){
+    key='done';
+    text=SESSION==='tsmc'?'研究閉環已完成 — 要我開 portfolio 層看跨公司結構嗎?':'主線完成 — 要回首頁開下一個研究嗎?';
+    fn=SESSION==='tsmc'?()=>portView():()=>goHome();
   }else{
-    key='addAnalyses';text='這張骨架還缺財務/技術/價量分析 — 要我列出可加的節點嗎?';fn=()=>openCtxMenu(innerWidth/2,innerHeight/2)
+    key=SESSION+':'+cur.k;
+    text='看你停了一下 — 下一步是「'+cur.l+'」,要我直接帶你去嗎?';
+    fn=cur.go;
   }
   if(suggestedKeys.has(key)){armIdle();return}
   suggestedKeys.add(key);
@@ -3182,7 +3322,7 @@ function saveResearch(){
     localStorage.setItem(resKey(RES_ID),JSON.stringify(R));
     const idx=loadIdx();
     idx[RES_ID]={sess:SESSION,q:RES_Q,ts:R.ts,
-      prog:SESSION==='tsmc'?JOURNEY.filter(s=>s.done()).length:1,
+      prog:JLIST().filter(s=>s.done()).length, progMax:JLIST().length,
       bull:R.bullPinned?1:0,bear:(R.redTeamed?1:0)+(R.advPinned?1:0),open:R.advPinned?0:1,
       plan:R.planExists,settled:R.settled,mon:monitored.size,
       dir:(SESSION==='tsmc'&&R.bullPinned)?planDirection():'',conv:(SESSION==='tsmc'&&R.bullPinned)?convCalc():0,risk:PROFILE.risk};
@@ -3211,7 +3351,7 @@ function initStage0(){
     const view=e.dir?`<span style="color:${e.conv>=6?'var(--bull)':(e.conv>=4?'var(--amber)':'var(--bear)')}">觀點:${e.dir} · ${e.conv}/10 · ${e.risk}</span> · `:'';
     const stat=e.sess==='tsmc'
       ?`進度 ${e.prog}/8 · bull ${e.bull} · bear ${e.bear} · 未決 ${e.open}${e.plan?' · <span style="color:var(--bull)">⇪ 計畫</span>':''}${e.settled?' · <span style="color:var(--bull)">✓ 已對答案</span>':''}`
-      :`骨架 session · 監控 ${e.mon||0} 個 · 右鍵可補分析`;
+      :`進度 ${e.prog}/${e.progMax||6}${e.plan?' · <span style="color:var(--bull)">⇪ 計畫</span>':''} · 監控 ${e.mon||0} 個`;
     html+=`<div class="s0card" onclick="resumeResearch('${id}')">${e.sess==='tsmc'?S0THUMB:S0THUMB2}
       <div class="si"><b><span class="evTag ${tagCls}">${SESS_NAME[e.sess]||e.sess}</span>${(e.q||'').slice(0,26)||'(預設問題)'}</b>
         <div class="st">${view}${stat}</div>
