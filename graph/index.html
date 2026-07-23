@@ -2928,6 +2928,7 @@ function planPaneLite(){
   </div>
   <div class="card"><h4>進場框架 · ${dir}</h4>
     <table class="scTable"><tr><th>價位</th><th>動作</th><th>倉位</th></tr>${entryRows}</table>
+    ${sizingRow()}
     <div class="from" style="font-size:10px;color:var(--faint);margin-top:5px">← ${SESS_NAME[SESSION]} 錨點:${A.e1l} $${A.e1} / ${A.e2l} $${A.e2} / 年線 $${A.yr}</div>
   </div>
   <div class="card"><h4>失效與出場</h4>
@@ -3698,6 +3699,8 @@ async function tryLive(){
   }));
   liveNewsFetch();liveMonitorsFetch();
   tryLiveTw();tryLiveUs();liveInboxFetch();livePosFetch();
+  jget('/plan/sizing?symbol='+encodeURIComponent(LIVE_SYM[SESSION]||'2330.TW')+'&venue='+((LIVE_SYM[SESSION]||'').endsWith('.TW')?'shioaji':'alpaca')+'&conviction='+convCalc(),90000)
+    .then(r=>{if(r&&r.qty!=null){LIVE_SZ=r;updatePlanDock()}});
   { // 市場隱含機率(Manifold)— 假說信念 vs 市場的對照
     const term=SESSION==='tsmc'?'TSMC':(SESSION==='nvda'?'Nvidia':(SESSION==='asml'?'ASML':(LIVE_SYM[SESSION]||'').replace('.TW','')));
     if(term)jget('/research/pm?q='+encodeURIComponent(term),20000).then(r=>{if(r&&r.markets&&r.markets.length){LIVE_PM=r.markets;updatePlanDock()}});
@@ -3739,7 +3742,7 @@ function thesisBridgeBtn(){
 
 /* ===== v21c 台股真值層:FinLab/TWSE 真值進節點、falsifier 真錨點、agent inbox、
    真 LLM 節點問答(/research/ask)、計畫 paper 掛單(/plan/execute)、checkpoints 自動對答案 ===== */
-let LIVE_TW=null, LIVE_POS=null, LIVE_FBT=null, LIVE_TRN=null, LIVE_PM=null;
+let LIVE_TW=null, LIVE_POS=null, LIVE_FBT=null, LIVE_TRN=null, LIVE_PM=null, LIVE_SZ=null;
 async function tryLiveTw(){
   const sym=LIVE_SYM[SESSION]||'';
   if(!sym.endsWith('.TW'))return;
@@ -3847,20 +3850,30 @@ async function sendPlanOrders(btn){
   if(conv<4){toast(`信念 ${conv}/10 — 計畫方向是減碼/迴避,不掛買單`);return}
   const A=PLAN_ANCHORS[SESSION]||{};
   const base=A.price||FACTS.price;
-  const q=(LIVE_SYM[SESSION]||'').endsWith('.TW')?1000:20;   // 台股整張,美股 20 股
+  const isTW=(LIVE_SYM[SESSION]||'').endsWith('.TW');
+  // sizing 引擎:風險預算 ÷ ATR 停損距離(拿不到才退回固定股數)
+  let sz=LIVE_SZ;
+  try{sz=await jget('/plan/sizing?symbol='+encodeURIComponent(LIVE_SYM[SESSION])+'&venue='+(isTW?'shioaji':'alpaca')+'&conviction='+conv,90000)||sz}catch(_){}
+  const q=(sz&&sz.qty)?sz.qty:(isTW?1000:20);
+  const half=isTW?Math.max(1000,Math.floor(q/2000)*1000):Math.max(1,Math.floor(q/2));
   let entries=SESSION==='tsmc'
-    ?[{price:Math.round(base*0.965),qty:q},{price:Math.round(base*0.90),qty:q}]
-    :[{price:A.e1||Math.round(base*0.95),qty:q},{price:A.e2||Math.round(base*0.88),qty:q}];
+    ?[{price:Math.round(base*0.965),qty:half},{price:Math.round(base*0.90),qty:q-half}]
+    :[{price:A.e1||Math.round(base*0.95),qty:half},{price:A.e2||Math.round(base*0.88),qty:q-half}];
+  entries=entries.filter(e=>e.qty>0);
   if(conv<6)entries=entries.slice(-1);
+  // 授權自動出場(bracket):明確 confirm 才寫入 stop/target
+  let autoExit=false;
+  if(sz&&sz.stop)autoExit=window.confirm(`授權自動出場(paper bracket)?\n停損 $${sz.stop} / 停利 $${sz.target} 觸發即市價平倉\n建議部位 ${q.toLocaleString()} 股 · 最大虧損 ≈ ${sz.risk_pct_nav}% NAV\n(取消 = 只掛進場單,不自動出場)`);
   ordersSending=true;if(btn){btn.textContent='⚡ 掛單中…';btn.style.opacity=.6}
   try{
     const r=await fetch(API+'/plan/execute',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({symbol:LIVE_SYM[SESSION],venue:(LIVE_SYM[SESSION]||'').endsWith('.TW')?'shioaji':'alpaca',side:'LONG',
-                           entries,label:RES_Q||SESS_NAME[SESSION],session_key:RES_ID})});
+      body:JSON.stringify({symbol:LIVE_SYM[SESSION],venue:isTW?'shioaji':'alpaca',side:'LONG',
+                           entries,label:RES_Q||SESS_NAME[SESSION],session_key:RES_ID,
+                           stop:sz?sz.stop:null,target:sz?sz.target:null,auto_exit:autoExit})});
     const d=await r.json();
     if(!r.ok)throw new Error(d.detail||('HTTP '+r.status));
     const n=d.placed.length;
-    toast(n?`⚡ paper 已掛 ${n} 筆限價(${d.placed.map(p=>'$'+p.limit).join(' / ')})— 走真 Order FSM`:'今日此計畫已掛過(冪等)');
+    toast(n?`⚡ paper 已掛 ${n} 筆限價(${d.placed.map(p=>'$'+p.limit).join(' / ')})${autoExit?' + 自動出場已授權(停損 $'+sz.stop+')':''} — 走真 Order FSM`:'今日此計畫已掛過(冪等)');
     if(btn){btn.textContent=n?`✓ 已掛 ${n} 筆`:'✓ 已在單簿';btn.style.opacity=1}
     livePosFetch();
   }catch(e){
@@ -4150,6 +4163,12 @@ async function exportRealMemo(){
   toast('⇩ 真值備忘錄已下載(.md)— 問題/快照/表態/計畫/checkpoints/出處全含');
 }
 function memoBtn(){return LIVE?`<button class="tbtn" onclick="exportRealMemo()">⇩ 備忘錄 .md(真值)</button>`:''}
+/* sizing 建議列(計畫卡「進場框架」)— 風險預算 ÷ ATR 停損距離 */
+function sizingRow(){
+  if(!LIVE||!LIVE_SZ)return'';
+  const z=LIVE_SZ;
+  return `<div class="arow"><b>⚖ 建議倉位:${z.qty.toLocaleString()} 股${z.lots!=null?`(${z.lots} 張)`:''}</b> · 停損 $${z.stop} · 停利 $${z.target}(2R)· 最大虧損 ≈ ${z.risk_pct_nav}% NAV<div class="from">← ATR14 $${z.atr14}(${z.atr_pct}%)× ${z.factors.atr_mult} · conviction ×${z.factors.conviction} · 滑價 ×${z.factors.slippage} · HV20 ${z.hv20}%${z.beta!=null?' · β '+z.beta:''}</div></div>`;
+}
 /* falsifier 歷史回測列(計畫卡「失效與出場」)*/
 function fbtRow(){
   if(!LIVE||!LIVE_FBT||!LIVE_FBT.breaches)return'';
