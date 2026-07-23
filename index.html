@@ -2941,7 +2941,8 @@ function planPaneLite(){
     <div class="arow"><b>${A.next}</b>:財報對答案後 agent 重算本計畫<div class="from">← 事件時點</div></div>
     <div class="arow"><b>節點監控 ${monitored.size} 個</b>${monitored.size?'<button class="tbtn" style="margin-left:6px" onclick="openMonList()">查看清單</button>':'(在節點卡內「⚑ 掛監控」)'}<div class="from">← 節點觸發器</div></div>
   </div>
-  ${LIVE?`<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">${thesisBridgeBtn()}</div>`:''}
+  ${LIVE?`<div class="msg agent">${pmCard()}</div>`:''}
+  ${LIVE?`<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">${thesisBridgeBtn()}${memoBtn()}</div>`:''}
   <div class="srcRow">本計畫由你的觀點 × ${SESS_NAME[SESSION]} 錨點即時組裝${LIVE?' · <span style="color:var(--bull)">● LIVE 現價</span>':' · 示意數字非即時行情'}</div>
   </div>`;
 }
@@ -3024,7 +3025,8 @@ function planPaneHTML(){
     <div class="arow"><b>節點監控 ${monitored.size} 個</b>${monitored.size?'(觸發即標記本計畫待重審)<button class="tbtn" style="margin-left:6px" onclick="openMonList()">查看清單</button>':'(尚未掛 — 可在節點卡內「⚑ 掛監控」)'}<div class="from">← 節點觸發器</div></div>
     ${livePlanRow()}
   </div>
-  <div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap"><button class="tbtn" onclick="copyPlan()">⧉ 複製全文</button><button class="tbtn" onclick="openMemo()">⇩ 連同備忘錄匯出</button><button class="tbtn" style="border-color:rgba(224,104,122,.5);color:var(--bear)" onclick="preMortem()">☠ pre-mortem</button>${thesisBridgeBtn()}</div>
+  <div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap"><button class="tbtn" onclick="copyPlan()">⧉ 複製全文</button><button class="tbtn" onclick="openMemo()">⇩ 連同備忘錄匯出</button><button class="tbtn" style="border-color:rgba(224,104,122,.5);color:var(--bear)" onclick="preMortem()">☠ pre-mortem</button>${thesisBridgeBtn()}${memoBtn()}</div>
+  ${LIVE?`<div class="msg agent">${pmCard()}</div>`:''}
   <div class="srcRow">本計畫由 ◆ 論點欄 × ◈ 估值模型 × ◉ 倉位 overlay 即時組裝 · 2026-07-19 · 上游任一更新即標記待重審</div>
   </div>`;
 }
@@ -3696,6 +3698,10 @@ async function tryLive(){
   }));
   liveNewsFetch();liveMonitorsFetch();
   tryLiveTw();tryLiveUs();liveInboxFetch();livePosFetch();
+  { // 市場隱含機率(Manifold)— 假說信念 vs 市場的對照
+    const term=SESSION==='tsmc'?'TSMC':(SESSION==='nvda'?'Nvidia':(SESSION==='asml'?'ASML':(LIVE_SYM[SESSION]||'').replace('.TW','')));
+    if(term)jget('/research/pm?q='+encodeURIComponent(term),20000).then(r=>{if(r&&r.markets&&r.markets.length){LIVE_PM=r.markets;updatePlanDock()}});
+  }
   setInterval(liveMonitorsFetch,30000);setInterval(liveInboxFetch,60000);   // 哨兵/收件匣即時化
   updatePlanDock();refreshPlanCard();
 }
@@ -3733,7 +3739,7 @@ function thesisBridgeBtn(){
 
 /* ===== v21c 台股真值層:FinLab/TWSE 真值進節點、falsifier 真錨點、agent inbox、
    真 LLM 節點問答(/research/ask)、計畫 paper 掛單(/plan/execute)、checkpoints 自動對答案 ===== */
-let LIVE_TW=null, LIVE_POS=null, LIVE_FBT=null, LIVE_TRN=null;
+let LIVE_TW=null, LIVE_POS=null, LIVE_FBT=null, LIVE_TRN=null, LIVE_PM=null;
 async function tryLiveTw(){
   const sym=LIVE_SYM[SESSION]||'';
   if(!sym.endsWith('.TW'))return;
@@ -4091,6 +4097,59 @@ function cmpOpenSession(code){
   else{sessionStorage.setItem('boot','sess:tw'+code);sessionStorage.setItem('bootq',code+' 值得在這個價位買嗎?')}
   location.reload();
 }
+/* 市場怎麼看(Manifold 預測市場)— divergence 就是 edge */
+function pmCard(){
+  if(!LIVE||!LIVE_PM||!LIVE_PM.length)return'';
+  const conv=convCalc();
+  return `<div class="card"><h4>市場怎麼看(Manifold 預測市場)</h4>
+    ${LIVE_PM.slice(0,4).map(m=>{
+      const pct=Math.round(m.prob*100);
+      const myP=conv*10, diff=myP-pct;
+      const edge=Math.abs(diff)>=15;
+      return `<div class="arow"><b>${String(m.question).replace(/</g,'&lt;').slice(0,64)}</b> — 市場 <b>${pct}%</b>`
+        +`${edge?` <span class="${diff>0?'up':'down'}">vs 你的信念 ${myP}%(差 ${diff>0?'+':''}${diff}pp — 可能是 edge 或警訊)</span>`:''}`
+        +`<div class="from">← Manifold · vol ${m.volume}${m.url?` · <a href="${m.url}" target="_blank" style="color:var(--act)">開市場</a>`:''}</div></div>`}).join('')}
+    <div style="font-size:10px;color:var(--faint);margin-top:5px">↳ 市場問題與你的假說不完全同構 — 對照供判斷,非同一命題</div></div>`;
+}
+/* 真備忘錄:真值快照 × 表態 × 計畫 × checkpoints × 出處 → .md 下載 */
+async function exportRealMemo(){
+  if(!LIVE){openMemo();return}
+  const cps=await jget('/checkpoints?session_key='+encodeURIComponent(RES_ID),10000);
+  const f=LIVE_TW&&LIVE_TW.f,c=LIVE_TW&&LIVE_TW.c,cal=LIVE_TW&&LIVE_TW.cal,uf=LIVE_USF;
+  const conv=convCalc(),dir=planDirection(),A=PLAN_ANCHORS[SESSION]||{};
+  const L=[];
+  L.push('# 研究備忘錄 — '+SESS_NAME[SESSION]+'('+LIVE_SYM[SESSION]+')');
+  L.push('','日期:'+new Date().toISOString().slice(0,10)+' · 產生自 event-trader Research Graph(全真值)','');
+  L.push('## 研究問題','',RES_Q||'—','');
+  L.push('## 真值快照','');
+  if(f&&f.latest)L.push('- 月營收 '+f.latest.rev_100m.toLocaleString()+' 億(YoY '+(f.latest.rev_yoy>0?'+':'')+f.latest.rev_yoy+'%)'+(f.latest.gm!=null?' · 毛利率 '+f.latest.gm+'%':'')+' 〔FinLab〕');
+  if(c)L.push('- 外資連 '+Math.abs(c.foreign_streak)+' 日'+(c.foreign_streak<0?'賣超':'買超')+(c.borrow_balance?' · 借券 20 日 '+(c.borrow_balance.chg20d>0?'+':'')+c.borrow_balance.chg20d.toLocaleString()+' 張':'')+' 〔FinLab 籌碼〕');
+  if(uf&&uf.latest)L.push('- 季營收 $'+uf.latest.rev_b+'B'+(uf.latest.yoy!=null?'(YoY '+(uf.latest.yoy>0?'+':'')+uf.latest.yoy+'%)':'')+(uf.latest.gm!=null?' · GM '+uf.latest.gm+'%':'')+' 〔yfinance 季報〕');
+  if(cal)L.push('- 對答案:月營收 '+cal.next_monthly_revenue+'(D-'+cal.dday_monthly+')· 季報 '+cal.next_quarterly_deadline+' 〔行事曆〕');
+  if(uf&&uf.next_earnings)L.push('- 財報日 '+uf.next_earnings+'(D-'+Math.max(0,uf.dday)+')〔yfinance〕');
+  L.push('','## 觀點表態','','風險偏好:'+PROFILE.risk,'');
+  Object.keys(hSet()).forEach(h=>L.push('- '+hLabel(h)+':**'+(stanceOf(h)==='accept'?'接受':(stanceOf(h)==='reject'?'拒絕':'存疑'))+'**'));
+  L.push('','## 交易計畫','','- 方向:**'+dir+'** · 信念 **'+conv+'/10**(表態+風險+校準推導)');
+  if(A.price)L.push('- 進場錨點:現價 '+(A.cur||'$')+A.price+(A.e1?' · 回檔帶 '+A.cur+A.e1+' · 深回檔 '+A.cur+A.e2+' · 年線近似 '+A.cur+A.yr:''));
+  L.push('- Falsifier:'+(SESSION==='tsmc'?falsText:(A.fals||'—')));
+  if(LIVE_FBT&&LIVE_FBT.breaches)L.push('- 歷史回測:「'+LIVE_FBT.rule+'」'+LIVE_FBT.observations+' 次觸發 '+LIVE_FBT.breaches+' 次;觸發後 '+LIVE_FBT.horizon_days+'D 平均 '+(LIVE_FBT.avg_fwd_breach>0?'+':'')+LIVE_FBT.avg_fwd_breach+'% vs 未觸發 '+(LIVE_FBT.avg_fwd_ok>0?'+':'')+LIVE_FBT.avg_fwd_ok+'%');
+  if(cps&&cps.checkpoints&&cps.checkpoints.length){
+    L.push('','## Checkpoints(自動對答案)','','| 規則 | 到期 | 狀態 | 觀測 |','|---|---|---|---|');
+    cps.checkpoints.forEach(x=>L.push('| '+(x.label||x.metric+' '+x.op+' '+x.threshold)+' | '+x.due+' | '+x.status+' | '+(x.observed==null?'—':x.observed)+' |'));
+  }
+  if(LIVE_PM&&LIVE_PM.length){
+    L.push('','## 市場隱含機率(Manifold)','');
+    LIVE_PM.slice(0,4).forEach(m=>L.push('- '+m.question+' — '+Math.round(m.prob*100)+'%'+(m.url?'('+m.url+')':'')));
+  }
+  L.push('','## 出處','','FinLab(月營收/毛利/籌碼)· TWSE/TPEx OpenAPI(重訊/大盤)· yfinance(報價/K 線/季報)· Manifold(預測市場)· event-trader 內部(checkpoints/回測)','');
+  const md=L.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
+  a.download='memo-'+(LIVE_SYM[SESSION]||SESSION).replace('/','-')+'-'+new Date().toISOString().slice(0,10)+'.md';
+  a.click();
+  toast('⇩ 真值備忘錄已下載(.md)— 問題/快照/表態/計畫/checkpoints/出處全含');
+}
+function memoBtn(){return LIVE?`<button class="tbtn" onclick="exportRealMemo()">⇩ 備忘錄 .md(真值)</button>`:''}
 /* falsifier 歷史回測列(計畫卡「失效與出場」)*/
 function fbtRow(){
   if(!LIVE||!LIVE_FBT||!LIVE_FBT.breaches)return'';
