@@ -2874,6 +2874,7 @@ function updatePlanDock(){
   }
 }
 function openPlanFromDock(){
+  fetchThesisState();
   const n=NODES.find(x=>x.id==='plan');
   if(n&&document.getElementById('n-plan')){if(focusNode&&focusNode.id==='plan')return;openPane(n)}
   else genPlan();
@@ -2938,6 +2939,7 @@ function planPaneLite(){
     <div class="arow"><b>$${A.hi}(上緣)</b>→ 分批獲利 1/3</div>
   </div>
   <div class="card"><h4>部位 · 時程</h4>
+    ${thesisRow()}
     ${livePlanRow()||'<div class="arow"><b>無既有倉位</b> — 首倉上限 NAV 5%(骨架 session 未接倉位 overlay)<div class="from">← 風控預設</div></div>'}
     <div class="arow"><b>${A.next}</b>:財報對答案後 agent 重算本計畫<div class="from">← 事件時點</div></div>
     <div class="arow"><b>節點監控 ${monitored.size} 個</b>${monitored.size?'<button class="tbtn" style="margin-left:6px" onclick="openMonList()">查看清單</button>':'(在節點卡內「⚑ 掛監控」)'}<div class="from">← 節點觸發器</div></div>
@@ -3024,6 +3026,7 @@ function planPaneHTML(){
       ?`<div class="arow"><b class="up">Q3 法說會已結算</b>:falsifier ✓ · 校準已更新 · 下一事件:Q4 法說會(~10 月)<div class="from">← 事件結算 · 校準儀表板</div></div>`
       :`<div class="arow"><b>Q3 法說會 · D-${FACTS.dday}</b>:帶著 ${opens} 個未決問題進場,會後 agent 對答案並<b>自動重算本計畫</b><div class="from">← 事件倒數 checklist</div></div>`}
     <div class="arow"><b>節點監控 ${monitored.size} 個</b>${monitored.size?'(觸發即標記本計畫待重審)<button class="tbtn" style="margin-left:6px" onclick="openMonList()">查看清單</button>':'(尚未掛 — 可在節點卡內「⚑ 掛監控」)'}<div class="from">← 節點觸發器</div></div>
+    ${thesisRow()}
     ${livePlanRow()}
   </div>
   <div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap"><button class="tbtn" onclick="copyPlan()">⧉ 複製全文</button><button class="tbtn" onclick="openMemo()">⇩ 連同備忘錄匯出</button><button class="tbtn" style="border-color:rgba(224,104,122,.5);color:var(--bear)" onclick="preMortem()">☠ pre-mortem</button>${thesisBridgeBtn()}${memoBtn()}</div>
@@ -3698,7 +3701,7 @@ async function tryLive(){
     if(o&&o.bars&&o.bars.length>5)LIVE_BARS[sess]=o.bars;
   }));
   liveNewsFetch();liveMonitorsFetch();
-  tryLiveTw();tryLiveUs();liveInboxFetch();livePosFetch();
+  tryLiveTw();tryLiveUs();liveInboxFetch();livePosFetch();fetchThesisState();
   jget('/plan/sizing?symbol='+encodeURIComponent(LIVE_SYM[SESSION]||'2330.TW')+'&venue='+((LIVE_SYM[SESSION]||'').endsWith('.TW')?'shioaji':'alpaca')+'&conviction='+convCalc(),90000)
     .then(r=>{if(r&&r.qty!=null){LIVE_SZ=r;updatePlanDock()}});
   { // 市場隱含機率(Manifold)— 假說信念 vs 市場的對照
@@ -3729,6 +3732,8 @@ async function sendPlanToBackend(btn){
     toast(`✓ Thesis #${t.id} 已建立 — 拆出 ${(t.claims||[]).length} 條 claims,到 Thesis Lab 表態→挑戰→arm`);
     if(btn){btn.textContent=`✓ Thesis #${t.id} → 開拆彈 ↗`;btn.style.opacity=1;
       btn.onclick=()=>{try{parent.postMessage({type:'open-thesis',id:t.id},'*')}catch(_){/* standalone */}}}
+    localStorage.setItem('thesisId.'+RES_ID, t.id);
+    fetchThesisState();
     armLiveCheckpoints(t.id);
   }catch(e){
     toast('✗ 送出失敗:'+(e&&e.message||e));
@@ -3742,7 +3747,7 @@ function thesisBridgeBtn(){
 
 /* ===== v21c 台股真值層:FinLab/TWSE 真值進節點、falsifier 真錨點、agent inbox、
    真 LLM 節點問答(/research/ask)、計畫 paper 掛單(/plan/execute)、checkpoints 自動對答案 ===== */
-let LIVE_TW=null, LIVE_POS=null, LIVE_FBT=null, LIVE_TRN=null, LIVE_PM=null, LIVE_SZ=null;
+let LIVE_TW=null, LIVE_POS=null, LIVE_FBT=null, LIVE_TRN=null, LIVE_PM=null, LIVE_SZ=null, LIVE_TH=null;
 async function tryLiveTw(){
   const sym=LIVE_SYM[SESSION]||'';
   if(!sym.endsWith('.TW'))return;
@@ -4163,6 +4168,27 @@ async function exportRealMemo(){
   toast('⇩ 真值備忘錄已下載(.md)— 問題/快照/表態/計畫/checkpoints/出處全含');
 }
 function memoBtn(){return LIVE?`<button class="tbtn" onclick="exportRealMemo()">⇩ 備忘錄 .md(真值)</button>`:''}
+/* thesis 回流:backend 拆彈機的狀態顯示回 graph 計畫卡(雙向閉環)*/
+async function fetchThesisState(){
+  const tid=localStorage.getItem('thesisId.'+RES_ID);
+  if(!LIVE||!tid)return;
+  const t=await jget('/thesis/'+tid,15000);
+  if(t&&t.id){LIVE_TH=t;updatePlanDock();if(typeof refreshPlanCard==='function')refreshPlanCard()}
+}
+function thesisRow(){
+  if(!LIVE||!LIVE_TH)return'';
+  const t=LIVE_TH;
+  const mons=(t.monitors||[]);
+  const armed=mons.filter(m=>m.status==='ARMED').length, fired=mons.filter(m=>m.status==='FIRED').length;
+  const ch=(t.challenges||[]);
+  const un=ch.filter(c=>!c.resolved).length;
+  const col=t.status==='ARMED'?'var(--bull)':(t.status==='BLOCKED'?'var(--bear)':'var(--amber)');
+  return `<div class="arow"><b>⇄ backend Thesis #${t.id}:<span style="color:${col}">${t.status}</span></b>`
+    +` · 監控 ${armed} 個站崗${fired?`(<span class="down">${fired} 已觸發</span>)`:''}`
+    +`${ch.length?` · 拷問 ${ch.length-un}/${ch.length} 已答${un?`(<span class="down">${un} 未答限倉</span>)`:''}`:''}`
+    +`<button class="tbtn" style="margin-left:6px" onclick="try{parent.postMessage({type:'open-thesis',id:${t.id}},'*')}catch(_){}">開拆彈 ↗</button>`
+    +`<div class="from">← 雙向回流 · /thesis/${t.id}</div></div>`;
+}
 /* sizing 建議列(計畫卡「進場框架」)— 風險預算 ÷ ATR 停損距離 */
 function sizingRow(){
   if(!LIVE||!LIVE_SZ)return'';
